@@ -1,0 +1,1497 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Métabolia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-screen game, scenes swap (titre → familles → carte → niveau); questions in a centred card */
+:root{
+  color-scheme: dark;
+  --ink:#17122b; --ink-2:#221a3d; --ink-3:#2d2450; --line:#3d3366;
+  --fg:#f4effd; --muted:#b4a9d2; --dim:#8f85b3;
+  --amber:#ffb547; --amber-2:#ffd58f;
+  --violet:#ae8dff;
+  --coral:#ff8a70; --sky:#72c6ff; --teal:#55d6cf; --lilac:#d6a8ff;
+  --ok:#5fe0b4; --bad:#ff6b8a;
+  --display:"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r:14px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ink);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;overflow-x:hidden;
+  background-image:radial-gradient(1200px 600px at 85% -10%, #2c2056 0%, transparent 60%),radial-gradient(900px 500px at -10% 110%, #2a1840 0%, transparent 60%);
+  background-attachment:fixed}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+.mono{font-family:var(--mono);font-size:.88em}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 40px}
+.eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:700;color:var(--amber)}
+
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:6px 18px}
+.brand{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;background:none;border:0;padding:0}
+.spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--ink-2);border:1px solid var(--line);font-weight:600;font-size:13px;white-space:nowrap}
+.chip b{font-variant-numeric:tabular-nums;color:var(--amber)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:12px 20px;font-weight:700;background:var(--amber);color:#2a1a00;transition:transform .12s, filter .12s}
+.btn:hover{filter:brightness(1.07)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:var(--ink-2);color:var(--fg);border:1px solid var(--line)}
+.btn.small{padding:9px 15px;font-size:14px;border-radius:10px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.back{background:none;border:0;color:var(--muted);font-weight:600;display:inline-flex;gap:6px;align-items:center;padding:6px 0}
+.back:hover{color:var(--fg)}
+
+/* TITLE */
+#title{position:relative;min-height:100%;display:grid;place-items:center;overflow:hidden}
+#bgfx{position:absolute;inset:0;width:100%;height:100%}
+.title-inner{position:relative;text-align:center;padding:40px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px));max-width:640px}
+.title-inner h1{font-size:clamp(52px,12vw,112px);font-weight:800;letter-spacing:-.04em;margin:10px 0 6px}
+.title-inner h1 span{color:var(--amber)}
+.title-inner p{color:var(--muted);font-size:17px;margin:0 auto 28px;max-width:44ch}
+.formula{font-family:var(--mono);color:var(--violet);font-size:13px;margin-top:22px;opacity:.9}
+
+/* HUB */
+.hero-line{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:8px 0 20px}
+.hero-line h2{font-size:clamp(28px,5vw,40px);font-weight:800;letter-spacing:-.02em}
+.hero-line p{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.families{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.fam{position:relative;text-align:left;border:1px solid var(--line);background:var(--ink-2);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px;min-height:210px;overflow:hidden;transition:transform .15s,border-color .15s}
+.fam:hover:not(.locked){transform:translateY(-3px);border-color:var(--c)}
+.fam .glyph{width:64px;height:64px}
+.fam h3{font-size:21px;font-weight:700}
+.fam .sub{color:var(--muted);font-size:13.5px;margin:0}
+.fam .meta{margin-top:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.fam .meter{flex:1;height:6px;border-radius:9px;background:var(--ink-3);overflow:hidden}
+.fam .meter i{display:block;height:100%;background:var(--c);border-radius:9px}
+.fam.locked{opacity:.62;cursor:default}
+.fam .tag{position:absolute;top:14px;right:14px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.fam.active{border-color:color-mix(in srgb,var(--c) 55%, var(--line));box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 25%, transparent),0 18px 40px -20px var(--c)}
+.fam.active .tag{color:#1d1236;background:var(--c);border-color:var(--c)}
+.note{margin-top:22px;padding:14px 16px;border-radius:var(--r);border:1px dashed var(--line);color:var(--muted);font-size:14px}
+.note b{color:var(--fg)}
+
+/* WORLD */
+.world{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start}
+.mapbox{background:var(--ink-2);border:1px solid var(--line);border-radius:22px;padding:8px;position:relative;overflow:hidden}
+.mapbox svg{display:block;width:100%;height:auto}
+.node{cursor:pointer}
+.node.locked{cursor:default}
+.node-label{font-family:var(--display);font-weight:700;font-size:15px;fill:var(--fg)}
+.node-sub{font-family:var(--body);font-size:11.5px;fill:var(--muted)}
+.panel{background:var(--ink-2);border:1px solid var(--line);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;position:sticky;top:16px}
+.panel .kicker{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
+.panel h3{font-size:26px;font-weight:800}
+.panel .desc{color:var(--muted);margin:0}
+.levels{display:flex;flex-direction:column;gap:8px}
+.lvl{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--ink-3);border:1px solid transparent;text-align:left;width:100%}
+.lvl:hover{border-color:var(--line)}
+.lvl .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--ink);font-size:18px}
+.lvl .t{font-weight:700;line-height:1.25}
+.lvl .s{font-size:12.5px;color:var(--muted)}
+.lvl .secs{display:block;font-size:11.5px;color:var(--dim);margin-top:3px;line-height:1.35}
+.sectab{display:flex;flex-direction:column;gap:4px;width:100%;max-width:520px;text-align:left}
+.secrow{display:flex;justify-content:space-between;gap:12px;padding:8px 12px;border-radius:10px;background:var(--ink-3);font-size:13.5px}
+.secrow b{font-family:var(--mono);white-space:nowrap}.secrow b.g{color:var(--ok)}.secrow b.r{color:var(--bad)}
+.lvl .stars{font-size:14px;letter-spacing:2px;color:var(--dim);white-space:nowrap}
+.lvl .stars .on{color:var(--amber)}
+.pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;background:var(--amber);color:#2a1a00}
+.carnet-btn{position:relative}
+.carnet-btn .dot{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:700}
+
+/* GAME */
+.game-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.game-head h2{font-size:clamp(22px,4vw,30px);font-weight:800;flex:1;min-width:200px}
+.prog{display:flex;gap:4px;flex-wrap:wrap;max-width:100%}
+.prog i{width:18px;height:6px;border-radius:4px;background:var(--ink-3)}
+.prog i.ok{background:var(--ok)} .prog i.ko{background:var(--bad)} .prog i.cur{background:var(--amber)}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.solo{max-width:760px;margin:0 auto}
+.visual{background:var(--ink-2);border:1px solid var(--line);border-radius:22px;padding:14px;min-width:0;position:relative}
+.visual svg{display:block;width:100%;height:auto;max-height:70vh}
+.qcard{background:var(--ink-2);border:1px solid var(--line);border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.qcard .where{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
+.qcard h3{font-size:21px;font-weight:700;font-family:var(--body);line-height:1.3}
+.kind{display:inline-flex;align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--violet);border:1px solid color-mix(in srgb,var(--violet) 45%, transparent);border-radius:999px;padding:3px 9px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;padding:13px 15px;border-radius:12px;background:var(--ink-3);border:1.5px solid transparent;font-weight:600;transition:border-color .12s, background .12s}
+.opt:hover:not(:disabled){border-color:var(--violet)}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 16%, var(--ink-3))}
+.opt.ko{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 16%, var(--ink-3))}
+.opt.sel{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 14%, var(--ink-3))}
+.opt:disabled{cursor:default}
+.fb{border-radius:14px;padding:14px 16px;background:var(--ink);border-left:4px solid var(--ok);font-size:14.5px}
+.fb.ko{border-left-color:var(--bad)}
+.fb strong{display:block;margin-bottom:4px;font-size:15px}
+.fb .ref{display:block;margin-top:8px;font-size:12px;color:var(--dim)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* tri */
+.big{font-family:var(--display);font-size:clamp(28px,6vw,42px);font-weight:800;letter-spacing:-.02em;text-align:center;padding:18px 8px 4px}
+.big-sub{text-align:center;color:var(--muted);font-size:14px;font-family:var(--mono)}
+.bins{display:grid;gap:8px}
+.bin{padding:14px 8px;border-radius:14px;background:var(--ink-3);border:1.5px dashed var(--line);text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center}
+.bin:hover:not(:disabled){border-color:var(--amber);border-style:solid}
+.bin b{font-family:var(--display);font-size:16px;line-height:1.15}
+.bin small{color:var(--muted);font-size:12px;line-height:1.25}
+.bin.ok{border:1.5px solid var(--ok)} .bin.ko{border:1.5px solid var(--bad)}
+/* calc */
+.calc{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.calc input{flex:1;min-width:120px;max-width:240px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--ink);font-family:var(--mono);font-size:18px}
+.calc input.ok{border-color:var(--ok)} .calc input.ko{border-color:var(--bad)}
+.calc .u{color:var(--muted);font-family:var(--mono)}
+/* assoc */
+.assoc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:8px 12px}
+.assoc .col{display:flex;flex-direction:column;gap:8px}
+.as{text-align:left;padding:11px 13px;border-radius:12px;background:var(--ink-3);border:1.5px solid transparent;font-weight:600;font-size:14px;line-height:1.3;transition:border-color .12s}
+.as:hover:not(:disabled){border-color:var(--violet)}
+.as.sel{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 14%, var(--ink-3))}
+.as.done{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%, var(--ink-3));cursor:default}
+.as.shake{border-color:var(--bad);animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.as .tagn{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--ok);color:#0f2a22;font-size:11px;font-weight:800;margin-right:6px}
+/* ordre */
+.seq{display:flex;flex-direction:column;gap:6px;counter-reset:s}
+.slot{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:12px;border:1.5px dashed var(--line);color:var(--dim);font-size:14px}
+.slot b{font-family:var(--mono);color:var(--dim);font-size:12px;width:20px}
+.slot.fill{border-style:solid;border-color:var(--violet);background:var(--ink-3);color:var(--fg);cursor:pointer;font-weight:600}
+.slot.ok{border-color:var(--ok)} .slot.ko{border-color:var(--bad)}
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.chipb{padding:10px 13px;border-radius:11px;background:var(--ink-3);border:1.5px solid transparent;font-weight:600;font-size:14px}
+.chipb:hover{border-color:var(--amber)}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+/* builder */
+.tiles{display:flex;gap:8px;flex-wrap:wrap}
+.tile{padding:9px 13px;border-radius:11px;background:var(--ink-3);border:1.5px solid transparent;font-weight:600;font-size:14px}
+.tile:hover:not(:disabled){border-color:var(--violet)}
+.tile.sel{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 14%, var(--ink-3))}
+.tile.ok{border-color:var(--ok)} .tile.ko{border-color:var(--bad)}
+.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.96);opacity:0}100%{transform:scale(1);opacity:1}}
+/* end */
+.end{text-align:center;padding:30px 20px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.end .stars-big{font-size:56px;letter-spacing:6px}
+.end .stars-big .on{color:var(--amber)} .end .stars-big .off{color:var(--ink-3)}
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,6,22,.7);display:grid;place-items:center;z-index:50;padding:20px max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px))}
+.modal{background:var(--ink-2);border:1px solid var(--line);border-radius:22px;padding:22px;max-width:560px;width:100%;max-height:85vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.modal h3{font-size:24px;font-weight:800}
+.modal p{margin:0;color:var(--muted)}
+.mock{border-radius:14px;background:var(--ink);padding:14px;border:1px solid var(--line)}
+.carnet-item{padding:12px 14px;border-radius:12px;background:var(--ink-3);display:flex;flex-direction:column;gap:3px}
+.carnet-item .q{font-weight:700}
+.carnet-item .a{color:var(--ok);font-size:14px}
+.carnet-item .r{color:var(--dim);font-size:12px}
+
+@media (max-width:820px){
+  .world,.stage{grid-template-columns:minmax(0,1fr)}
+  .panel{position:static}
+  .visual svg{max-height:46vh}
+}
+@media (max-width:520px){
+  .assoc{grid-template-columns:minmax(0,1fr)}
+  .bins{grid-template-columns:minmax(0,1fr)!important}
+  .bin{flex-direction:row;justify-content:space-between;text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<!-- TITLE -->
+<section id="title">
+  <canvas id="bgfx" aria-hidden="true"></canvas>
+  <div class="title-inner">
+    <div class="eyebrow">BTS Diététique &amp; Nutrition · 1ʳᵉ année</div>
+    <h1>Méta<span>bolia</span></h1>
+    <p>Chaque fiche de cours devient un niveau. Suis les nutriments de l'atome jusqu'à l'assiette, et chaque erreur revient dans ton carnet jusqu'à ce que tu la maîtrises.</p>
+    <button class="btn" id="startBtn">Commencer l'aventure</button>
+    <div class="formula">C₆H₁₂O₆ + 6 O₂ → 6 CO₂ + 6 H₂O + 38 ATP</div>
+  </div>
+</section>
+
+<!-- HUB -->
+<section id="hub" hidden>
+  <div class="wrap">
+    <div class="bar">
+      <button class="brand" data-go="title" aria-label="Retour à l'écran titre"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><polygon points="13,2 23,7.5 23,18.5 13,24 3,18.5 3,7.5" fill="none" stroke="#ffb547" stroke-width="2.4"/><circle cx="13" cy="13" r="3" fill="#ae8dff"/></svg>Métabolia</button>
+      <div class="spacer"></div>
+      <span class="chip">Niveau <b class="lvlN">1</b></span>
+      <span class="chip"><b class="xpN">0</b> XP</span>
+      <button class="chip carnet-btn" data-carnet>Carnet de révision<span class="dot" hidden></span></button>
+    </div>
+    <div class="hero-line"><div>
+      <h2>Choisis ton chapitre</h2>
+      <p>Commence par le Prologue de chimie, puis attaque les familles de nutriments. Chaque famille réunit la biochimie et la physiologie d'un même nutriment.</p>
+    </div></div>
+    <div class="families" id="families"></div>
+    <div class="note"><b>Comment le jeu grandit :</b> Lipides, Protéines et Eau &amp; minéraux s'ouvriront quand tu ajouteras leurs fiches. La fiche « Eau et minéraux » de ton dossier est déjà prête.</div>
+  </div>
+</section>
+
+<!-- WORLD -->
+<section id="world" hidden>
+  <div class="wrap">
+    <div class="bar">
+      <button class="back" data-go="hub">← Chapitres</button>
+      <div class="spacer"></div>
+      <span class="chip">Niveau <b class="lvlN">1</b></span>
+      <span class="chip"><b class="xpN">0</b> XP</span>
+      <button class="chip carnet-btn" data-carnet>Carnet<span class="dot" hidden></span></button>
+    </div>
+    <div class="hero-line"><div>
+      <div class="eyebrow" id="wEyebrow"></div>
+      <h2 id="wTitle"></h2>
+      <p id="wSub"></p>
+    </div></div>
+    <div class="world">
+      <div class="mapbox"><svg id="map" role="group" aria-label="Carte des étapes"></svg></div>
+      <div class="panel" id="panel" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="game" hidden>
+  <div class="wrap">
+    <div class="game-head">
+      <button class="back" id="quitGame">← Carte</button>
+      <h2 id="gTitle">Niveau</h2>
+      <span class="chip"><b id="gScore">0</b> pts</span>
+    </div>
+    <div class="prog" id="gProg" style="margin-bottom:16px"></div>
+    <div id="gStage"></div>
+  </div>
+</section>
+
+<div class="scrim" id="scrim" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+
+<script>
+/* ================= CONTENU COMPLET (tiré des fiches d'Inès) =================
+   Une chaîne de caractères dans "items" = début d'une section de la fiche. */
+function Q(q,o,e){return {k:"qcm",q:q,o:o,e:e}}            /* o[0] = bonne réponse */
+function C(q,a,e,u,tol){return {k:"calc",q:q,a:a,u:u||"",tol:tol||0,e:e}}
+function T(b,n,k,e,sub){return {k:"tri",b:b,n:n,ans:k,e:e,sub:sub||""}}
+function A(q,p,e){return {k:"assoc",q:q,p:p,e:e}}
+function O(q,s,e){return {k:"ordre",q:q,s:s,e:e}}
+var LV={};
+
+/* ---------------- CHIMIE 1 · L'ATOME ---------------- */
+LV.c1a={id:"c1a",t:"Dans le noyau",s:"Chimie 1 · L'atome (1.1 et 1.2)",ic:"⚛",items:[
+"1.1 La structure de l'atome",
+Q("Qu'est-ce que l'atome ?",["La plus petite unité de la matière","La plus petite molécule","Un ion chargé"],"Comme la pièce d'un puzzle, à l'échelle du nanomètre."),
+Q("À quelle échelle se situe l'atome ?",["Le nanomètre (10⁻⁹ m)","Le millimètre (10⁻³ m)","Le micromètre (10⁻⁶ m)"],"L'atome se mesure en nanomètres."),
+Q("Quelle part de la masse de l'atome se trouve dans le noyau ?",["99,9 %","50 %","10 %"],"Le noyau, au centre, fait 99,9 % de la masse. Les électrons ont une masse quasi nulle."),
+A("Relie chaque particule à sa description.",[["Proton","Dans le noyau, charge +"],["Neutron","Dans le noyau, sans charge"],["Électron","Autour du noyau, charge −, masse quasi nulle"]],"Protons et neutrons forment ensemble les nucléons."),
+Q("Comment appelle-t-on ensemble les protons et les neutrons ?",["Les nucléons","Les ions","Les électrons de valence"],"Ce sont les particules du noyau."),
+Q("Pourquoi un atome est-il électriquement neutre ?",["Il a autant de protons que d'électrons","Il n'a pas de neutrons","Ses électrons n'ont pas de charge"],"Les charges + des protons compensent les charges − des électrons."),
+Q("Dans la notation ᴬ_Z X, que représente Z ?",["Le numéro atomique : nombre de protons (= nombre d'électrons)","Le nombre de masse","Le nombre de couches"],"X est le symbole de l'atome (C, Na pour natrium…)."),
+Q("Et A, le nombre de masse ?",["Protons + neutrons","Protons + électrons","Seulement les neutrons"],"A = nombre de nucléons."),
+C("Carbone ¹²₆C : combien de neutrons ?",6,"Neutrons = A − Z = 12 − 6 = 6. Le carbone a aussi 6 protons et 6 électrons."),
+C("Sodium (Z = 11, A = 23) : combien de neutrons ?",12,"23 − 11 = 12."),
+C("Calcium (Z = 20, A = 40) : combien de neutrons ?",20,"40 − 20 = 20."),
+C("Chlore (Z = 17, A = 35) : combien de neutrons ?",18,"35 − 17 = 18."),
+A("Relie chaque atome à son numéro atomique Z.",[["H","1"],["C","6"],["N","7"],["O","8"],["Na","11"]],"Valeurs du tableau de ta fiche (Cl 17, Ca 20)."),
+C("Combien d'atomes connus existe-t-il aujourd'hui ?",118,"Ton livre dit 109 : c'est un chiffre ancien."),
+Q("De quels atomes sont surtout faites nos molécules (aliments et organisme) ?",["C, H, O, N (+ un peu de S et de P)","Na, Cl, K, Ca","Fe, Zn, Cu, Mg"],"Les 4 atomes du vivant : carbone, hydrogène, oxygène, azote."),
+"1.2 Les couches électroniques",
+Q("Combien d'électrons au maximum une couche n peut-elle contenir ?",["2n²","n²","8n"],"K (n = 1) : 2 ; L (n = 2) : 8 ; M (n = 3) : 18."),
+C("Couche K (n = 1) : combien d'électrons au maximum ?",2,"2 × 1² = 2."),
+C("Couche L (n = 2) : combien d'électrons au maximum ?",8,"2 × 2² = 8."),
+C("Couche M (n = 3) : combien d'électrons au maximum ?",18,"2 × 3² = 18."),
+O("Dans quel ordre les couches se remplissent-elles ?",["K","L","M"],"On remplit K d'abord, puis L, puis M."),
+Q("Comment s'appelle la dernière couche occupée ?",["La couche de valence : elle sert à faire les liaisons","La couche K","Le noyau"],"C'est elle qui participe aux liaisons chimiques."),
+Q("Carbone (6 e⁻) : comment sont répartis ses électrons ?",["K : 2 · L : 4 (il lui manque 4 e⁻ pour l'octet)","K : 2 · L : 8","K : 6"],"D'où ses 4 liaisons possibles."),
+Q("Sodium (11 e⁻) : K : 2 · L : 8 · M : 1. Que tend-il à faire ?",["Perdre cet électron → Na⁺","Gagner 7 électrons","Partager 4 électrons"],"Avec un seul électron sur la couche M, il le perd.")
+]};
+LV.c1b={id:"c1b",t:"Octet et électronégativité",s:"Chimie 1 · L'atome (1.3 et 1.4)",ic:"⚛",items:[
+"1.3 Être stable : octet et duet",
+Q("Selon la règle de l'octet, un atome est stable quand…",["Sa couche de valence contient 8 électrons","Il a 8 protons","Il a 8 couches"],"Seuls les gaz rares le sont naturellement."),
+Q("Comment les autres atomes atteignent-ils l'octet ?",["Ils perdent, gagnent ou partagent des électrons","Ils perdent des protons","Ils gagnent des neutrons"],"Ce sont les liaisons chimiques (fiche 2)."),
+Q("Pourquoi l'hydrogène est-il stable avec 2 électrons ?",["Il n'a que la couche K : règle du duet","C'est un gaz rare","Il a 8 électrons"],"Même chose pour l'hélium, qui a déjà ses 2 e⁻."),
+Q("La représentation de Lewis montre…",["Le symbole de l'atome et les électrons de sa couche de valence","Tous les électrons de l'atome","Les protons et les neutrons"],"On place d'abord les électrons un par un (célibataires), puis on forme les doublets."),
+A("Lewis : relie chaque atome à son nombre d'électrons célibataires (= nombre de liaisons possibles).",[["H","1"],["O","2"],["N","3"],["C","4"]],"Nombre d'électrons célibataires = valence."),
+"1.4 Tableau périodique et électronégativité",
+Q("Dans le tableau périodique (de Mendeleïev), les atomes sont rangés par…",["Z croissant","A croissant","Ordre alphabétique"],"Numéro atomique croissant."),
+A("Relie chaque élément du tableau à ce qu'il indique.",[["Ligne (période)","Nombre de couches d'électrons"],["Colonne (groupe)","Nombre d'électrons de valence"]],"Ex. : le carbone a 2 couches et 4 e⁻ sur la dernière."),
+Q("Le carbone (2 couches, 4 e⁻ de valence) est dans…",["La période 2, le groupe IV","La période 4, le groupe II","La période 6, le groupe I"],"Ligne = couches, colonne = électrons de valence."),
+Q("L'électronégativité, c'est…",["La capacité d'un atome à attirer vers lui les électrons d'une liaison","Le nombre d'électrons d'un atome","La charge d'un ion"],"Mesurée sur l'échelle de Pauling."),
+Q("Quel est l'atome le plus électronégatif ?",["Le fluor (3,98)","L'oxygène (3,44)","Le sodium (0,93)"],"Échelle de Pauling."),
+Q("Dans le tableau, l'électronégativité augmente…",["De gauche à droite et de bas en haut","De droite à gauche","De haut en bas"],"Les gaz rares n'en ont pas."),
+Q("Les gaz rares ont-ils une électronégativité ?",["Non","Oui, la plus forte","Oui, la plus faible"],"Ils sont déjà stables."),
+O("Classe ces atomes du plus électronégatif au moins électronégatif.",["O","N","C","H"],"O (3,44) > N (3,04) > C (2,55) > H (2,2)."),
+Q("Pourquoi l'O₂ est-il l'accepteur final de la chaîne respiratoire ?",["L'oxygène attire fortement les électrons","Il a 8 neutrons","C'est un gaz rare"],"Forte électronégativité.")
+]};
+
+/* ---------------- CHIMIE 2 · LES LIAISONS ---------------- */
+var B_LIA=[["Covalente non polarisée","Δ < 0,4"],["Covalente polarisée","Δ de 0,4 à 1,7"],["Ionique","Δ > 1,7"]];
+var B_EAU=[["Hydrophile","se dissout dans l'eau"],["Hydrophobe","fuit l'eau"]];
+var B_ION=[["Ion monovalent","1 charge"],["Ion divalent","2 charges"]];
+LV.c2a={id:"c2a",t:"Partager ou donner ?",s:"Chimie 2 · Les liaisons (2.1 et 2.2)",ic:"🔗",items:[
+"Rappel : pourquoi des liaisons",
+Q("Pour atteindre 8 électrons (2 pour H), un atome peut…",["Partager des électrons (covalente) ou en donner/recevoir (ionique)","Perdre des protons","Gagner des neutrons"],"Ce sont les deux grands types de liaisons."),
+"2.1 La liaison covalente",
+Q("Une liaison covalente, c'est…",["La mise en commun d'une paire d'électrons, chacun en apporte 1","Le transfert d'un électron","Une attraction entre charges opposées"],"Chaque atome « compte » les électrons partagés pour compléter sa couche."),
+Q("Que représente un trait dans une formule (C–H) ?",["Une paire d'électrons partagée","Un électron seul","Un proton"],"Deux traits (C=O, O=O) = deux paires."),
+Q("Le dioxygène O₂ contient…",["Une double liaison (2 paires partagées)","Une liaison simple","Une liaison ionique"],"O=O."),
+Q("Le méthane CH₄ contient…",["4 liaisons covalentes simples","2 doubles liaisons","4 liaisons ioniques"],"Le carbone fait 4 liaisons."),
+A("Relie chaque atome à sa valence.",[["H","Monovalent (1)"],["O","Divalent (2)"],["N","Trivalent (3)"],["C","Tétravalent (4)"],["P","Pentavalent (5)"]],"Le soufre (S) est divalent, comme l'oxygène."),
+C("Combien de liaisons le soufre (S) fait-il ?",2,"Le soufre est divalent."),
+Q("Dans une formule développée, combien de traits autour de chaque C ?",["4 (un double trait compte pour 2)","2","1"],"Chaque O en a 2, chaque H 1."),
+Q("La liaison covalente est…",["Forte : il faut de la chaleur, un produit chimique ou une enzyme pour la rompre","Faible, elle se défait toute seule","Une liaison entre ions"],"Liaison de forte énergie."),
+Q("Que construit la liaison covalente ?",["Toutes nos molécules organiques : glucides, lipides, protéines","Uniquement le sel","Uniquement l'eau"],"C'est le squelette des molécules du vivant."),
+"2.2 La liaison ionique",
+Q("Dans une liaison ionique…",["Un atome cède un ou plusieurs électrons à un autre","Les deux atomes partagent une paire","Deux H⁺ s'attirent"],"On ne partage pas : on donne."),
+A("Relie chaque ion à sa définition.",[["Cation","Ion + : a perdu des électrons"],["Anion","Ion − : a gagné des électrons"]],"Cation : souvent un métal peu électronégatif (Na → Na⁺). Anion : atome très électronégatif (Cl → Cl⁻)."),
+Q("Quel type d'atome devient un cation ?",["Un atome peu électronégatif, souvent un métal","Un atome très électronégatif","Un gaz rare"],"Ex. : Na → Na⁺."),
+Q("Pourquoi Na⁺ et Cl⁻ restent-ils collés (NaCl, le sel de cuisine) ?",["Les charges opposées s'attirent","Ils partagent une paire d'électrons","Par une liaison hydrogène"],"C'est la liaison ionique."),
+T(B_ION,"Na⁺",0,"1 charge : monovalent."),
+T(B_ION,"Ca²⁺",1,"2 charges : divalent."),
+T(B_ION,"Cl⁻",0,"Monovalent."),
+T(B_ION,"Mg²⁺",1,"Divalent."),
+T(B_ION,"K⁺",0,"Monovalent."),
+T(B_ION,"Fe²⁺",1,"Divalent (comme Cu²⁺)."),
+Q("Ces ions (Na⁺, K⁺, Ca²⁺, Mg²⁺, Fe²⁺…) sont…",["Les minéraux de l'alimentation","Des glucides","Des vitamines"],"Lien avec la future famille Eau et minéraux.")
+]};
+LV.c2b={id:"c2b",t:"Polarité et eau",s:"Chimie 2 · Les liaisons (2.3 à 2.5)",ic:"🔗",items:[
+"2.3 Covalente ou ionique : l'électronégativité décide",
+Q("Dans une liaison, quel atome attire les électrons vers lui ?",["Le plus électronégatif","Le plus lourd","Le plus petit"],"Plus la différence (Δ) est grande, plus le partage est inégal."),
+A("Relie chaque Δ d'électronégativité au type de liaison.",[["Δ < 0,4","Covalente non polarisée"],["Δ de 0,4 à 1,7","Covalente polarisée"],["Δ > 1,7","Ionique"]],"Au-delà de 1,7, l'électron change carrément d'atome."),
+C("Calcule le Δ de la liaison C–H (C = 2,55 ; H = 2,2).",0.35,"2,55 − 2,2 = 0,35 : non polarisée.","",0.011),
+C("Calcule le Δ de la liaison O–H (O = 3,44 ; H = 2,2).",1.24,"3,44 − 2,2 = 1,24 : polarisée.","",0.011),
+C("Calcule le Δ de Na–Cl (Cl = 3,16 ; Na = 0,93).",2.23,"3,16 − 0,93 = 2,23 : ionique.","",0.011),
+T(B_LIA,"C–H",0,"Δ = 0,35.","C 2,55 · H 2,2"),
+T(B_LIA,"C–O",1,"Δ = 0,89.","O 3,44 · C 2,55"),
+T(B_LIA,"O–H",1,"Δ = 1,24.","O 3,44 · H 2,2"),
+T(B_LIA,"Na–Cl",2,"Δ = 2,23.","Cl 3,16 · Na 0,93"),
+Q("Dans O–H, où se trouve la paire d'électrons partagée ?",["Tirée vers le O","Pile au milieu","Tirée vers le H"],"L'oxygène (3,44) attire plus que l'hydrogène (2,2)."),
+Q("Que signifient δ⁻ et δ⁺ ?",["Des charges partielles, pas de vraies charges comme dans un ion","Des charges entières","Des neutrons"],"Le O devient un peu négatif (δ⁻), le H un peu positif (δ⁺)."),
+Q("Une molécule avec un côté un peu + et un côté un peu − est…",["Polaire, donc hydrophile","Apolaire, donc hydrophobe","Ionique"],"Ses charges partielles attirent l'eau."),
+Q("Pourquoi C–H est-il hydrophobe ?",["Non polarisée : pas de charges pour attirer l'eau","Trop de charges","C'est une liaison ionique"],"Δ = 0,35."),
+"2.4 La liaison hydrogène",
+Q("La liaison hydrogène, c'est…",["L'attraction entre le H δ⁺ d'une molécule et le O δ⁻ d'une voisine","Un partage d'électrons","Un transfert d'électrons"],"Comme deux petits aimants."),
+Q("La liaison hydrogène est…",["Faible, elle se fait et se défait facilement, mais très nombreuse","Très forte et rare","Impossible dans l'eau"],"Ce n'est pas un partage d'électrons, juste une attraction."),
+Q("Où trouve-t-on des liaisons hydrogène ?",["Entre molécules d'eau, entre l'eau et les –OH des glucides, dans les protéines et l'ADN","Uniquement dans le sel","Uniquement dans les lipides"],"Elles rendent les –OH hydrophiles."),
+"2.5 Hydrophile ou hydrophobe",
+Q("Quelles parties d'une molécule sont hydrophiles ?",["Les parties polaires ou chargées : –OH, –COO⁻, –NH₃⁺","Les chaînes de C–H","Toutes"],"Elles font des liaisons hydrogène avec l'eau."),
+Q("Que font les parties hydrophobes (chaînes C–H) dans l'eau ?",["Elles se regroupent entre elles, à l'écart de l'eau","Elles se dissolvent","Elles deviennent des ions"],"Comme l'huile en gouttelettes."),
+Q("Une molécule a une partie hydrophile et une partie hydrophobe. Qu'est-ce qui décide ?",["La partie la plus grande l'emporte","La partie hydrophile gagne toujours","La partie hydrophobe gagne toujours"],"Ex. : glycérol soluble, cholestérol insoluble."),
+T(B_EAU,"Éthanol",0,"1 –OH, petite chaîne (2 C) : soluble.","1 –OH · 2 C"),
+T(B_EAU,"Glycérol",0,"3 –OH, 3 C : soluble.","3 –OH · 3 C"),
+T(B_EAU,"Acide gras long",1,"1 –COOH, 16 à 18 C : insoluble.","1 –COOH · 16 à 18 C"),
+T(B_EAU,"Cholestérol",1,"1 –OH, 27 C : insoluble.","1 –OH · 27 C"),
+A("Les molécules insolubles doivent être transportées dans le plasma. Relie.",[["Cholestérol","Lipoprotéines"],["Acides gras","Albumine"]],"Le plasma est surtout de l'eau : les molécules solubles y circulent librement.")
+]};
+
+/* ---------------- CHIMIE 3 · LES MOLÉCULES ---------------- */
+LV.c3={id:"c3",t:"Les groupements fonctionnels",s:"Chimie 3 · Les molécules",ic:"🧬",items:[
+"3.1 Écrire une molécule",
+Q("Une molécule se définit par…",["La nature de ses atomes, leur nombre et les liaisons entre eux","Sa couleur","Sa masse seulement"],"On peut l'écrire de trois façons."),
+A("Relie chaque formule à ce qu'elle montre.",[["Formule brute","Uniquement les atomes et leur nombre"],["Formule développée","Toutes les liaisons"],["Formule semi-développée","Les liaisons entre carbones et les groupements regroupés"]],"Ex. du glycérol : C₃H₈O₃ (brute)."),
+Q("Quelle formule utilise-t-on surtout en biochimie ?",["La semi-développée","La brute","La développée"],"Ex. : CH₂OH–CHOH–CH₂OH pour le glycérol."),
+"3.2 Les isomères",
+Q("Deux isomères ont…",["La même formule brute mais une formule développée différente","La même formule développée","Des atomes différents"],"Ex. : glucose, fructose, galactose (C₆H₁₂O₆)."),
+Q("Conséquence : la formule brute suffit-elle à identifier une molécule ?",["Non","Oui","Seulement pour les glucides"],"Plusieurs molécules peuvent avoir la même."),
+"3.3 Les groupements fonctionnels",
+Q("Un groupement fonctionnel, c'est…",["Un groupe d'atomes qui donne à la molécule des propriétés et des réactions","Un atome isolé","Une liaison ionique"],"Les reconnaître permet de prévoir le comportement de la molécule. R = le reste de la molécule."),
+A("Relie chaque groupement à son nom.",[["–OH","Alcool (hydroxyle)"],["–CHO","Aldéhyde"],["C=O en milieu de chaîne","Cétone"],["–COOH","Acide carboxylique"],["–NH₂","Amine"],["–SH","Thiol"]],"L'amide : C=O lié à un NH₂ (–CONH₂)."),
+A("Alcool primaire ou secondaire ?",[["Alcool primaire","En bout de chaîne : son C est lié à 1 seul autre C"],["Alcool secondaire","En milieu de chaîne : son C est lié à 2 autres C"]],"La fonction alcool est polaire, donc hydrophile."),
+A("Que donne l'oxydation de chaque alcool ?",[["Alcool primaire","Aldéhyde"],["Alcool secondaire","Cétone"]],"Oxydation = perte de 2 e⁻ + 2 H⁺."),
+Q("L'aldéhyde s'oxyde facilement en…",["Acide carboxylique","Alcool","Cétone"],"La cétone, elle, ne s'oxyde pas."),
+A("Relie chaque test à son résultat.",[["Fehling + aldéhyde","Bleu → précipité rouge brique"],["Fehling + cétone","Reste bleu (négatif)"],["DNPH + cétone ou aldéhyde","Jaune → précipité orangé"]],"La DNPH détecte les deux ; Fehling seulement l'aldéhyde."),
+Q("Pourquoi dit-on que l'acide carboxylique est un acide faible ?",["Il ne lâche pas toujours son H⁺ : réaction réversible","Il ne contient pas de H","Il ne réagit jamais"],"R–COOH ⇄ R–COO⁻ + H⁺."),
+Q("Dans le corps (pH 7,4), un acide carboxylique est sous forme…",["R–COO⁻, chargé −, très hydrophile","R–COOH","R–NH₃⁺"],"Sauf si sa chaîne est très longue (acides gras longs : insolubles)."),
+A("Avec quoi l'acide carboxylique forme-t-il chaque liaison (en libérant de l'eau) ?",[["Un alcool","Liaison ester"],["Un thiol","Liaison thioester"],["Une amine","Liaison peptidique"]],"R–CO–O–R' (ester), R–CO–S–R' (thioester), R–CO–NH–R' (peptidique)."),
+Q("La fonction –COOH peut partir sous forme de…",["CO₂ : c'est la décarboxylation","H₂O","O₂"],"On la retrouve dans le cycle de Krebs."),
+Q("L'amine (R–NH₂) est…",["Une base : elle peut capter un H⁺","Un acide : elle lâche un H⁺","Neutre en toutes circonstances"],"On dit aussi alcaline."),
+Q("Dans le corps (pH 7,4), une amine est sous forme…",["R–NH₃⁺, chargée +","R–NH₂","R–COO⁻"],"Très hydrophile."),
+Q("Comment les acides aminés s'enchaînent-ils pour former les protéines ?",["L'amine de l'un se lie à l'acide carboxylique de l'autre : liaison peptidique","Par des ponts hydrogène","Par des liaisons ioniques"],"R–COOH + H₂N–R' → R–CO–NH–R' + H₂O."),
+Q("L'amide (–CONH₂) a un rôle dans…",["Le métabolisme de l'azote","La glycolyse","La digestion des lipides"],"Elle est hydrophile."),
+Q("Où trouve-t-on surtout le thiol (–SH) ?",["Sur la cystéine et le coenzyme A (CoA–SH)","Sur le glucose","Sur le cholestérol"],"Avec un acide, il forme un thioester."),
+Q("Deux –SH qui se lient forment…",["Un pont disulfure (–S–S–), qui tient la forme des protéines","Une liaison ester","Un aldéhyde"],"Important pour la structure des protéines."),
+Q("Le glucose porte plusieurs –OH. Est-ce un alcool ?",["Non : il a aussi un aldéhyde, c'est un ose","Oui","Oui, un alcool primaire"],"Une molécule n'est un « alcool » que si elle ne porte que des fonctions alcool.")
+]};
+
+/* ---------------- CHIMIE 4 · LES RÉACTIONS ---------------- */
+var B_SENS=[["Sens 1","vers C + D"],["Sens 2","vers A + B"]];
+LV.c4a={id:"c4a",t:"L'eau et l'oxydoréduction",s:"Chimie 4 · Les réactions (intro, 4.1, 4.2)",ic:"🧪",items:[
+"Points communs des réactions",
+Q("Où ont lieu les réactions de la biochimie ?",["Dans l'eau des 3 compartiments : sang, liquide interstitiel, cytosol","Dans l'air","Uniquement dans le sang"],"Les molécules sont dissoutes (solutés) dans l'eau (solvant) : elles bougent et se rencontrent."),
+Q("Pourquoi la congélation conserve-t-elle les aliments ?",["Les molécules sont figées : les réactions ralentissent","Le froid détruit les molécules","Les enzymes deviennent des glucides"],"Plus de mouvement, plus de rencontres."),
+Q("Les enzymes sont…",["Des protéines qui accélèrent énormément les réactions (catalyseurs biologiques)","Des glucides de réserve","Des minéraux"],"Elles rendent les réactions compatibles avec la vie de la cellule."),
+Q("Que nous apprend souvent le nom d'une enzyme ?",["Le type de réaction (hydrolase, kinase, isomérase…)","Sa couleur","L'organe où elle est"],"Ex. : déshydrogénase = oxydation."),
+"4.1 Les réactions qui font intervenir l'eau",
+A("Relie chaque réaction à ce qui se passe.",[["Condensation","2 molécules se lient, une eau part"],["Hydrolyse","L'eau coupe une liaison en deux"],["Hydratation","L'eau s'ajoute sans couper"],["Déshydratation","Une molécule perd de l'eau"]],"Hydrolyse = inverse de la condensation. Déshydratation = inverse de l'hydratation."),
+Q("Dans une condensation, d'où vient la molécule d'eau qui part ?",["Un –OH d'un côté, un H de l'autre","Deux O","De l'air"],"Une nouvelle liaison covalente se forme."),
+Q("Quelles enzymes font l'hydrolyse ?",["Les hydrolases (la digestion)","Les kinases","Les isomérases"],"Elles coupent les liaisons avec l'eau."),
+Q("L'hydratation se fait souvent sur…",["Une double liaison C=C, ce qui donne un alcool secondaire","Un ion","Un phosphate"],"Ex. : la fumarase dans le cycle de Krebs."),
+Q("La déshydratation d'un alcool secondaire donne…",["Une double liaison C=C","Un aldéhyde","Un ester"],"Inverse de l'hydratation."),
+Q("Que veut dire l'eau « cachée » d'une réaction ?",["L'eau produite par une condensation sert aussitôt à hydrolyser un ATP : elle n'apparaît pas dans l'équation","L'eau est invisible","L'eau reste dans l'enzyme"],"Ex. : formation de l'acyl-CoA. À comprendre, pas à apprendre par cœur."),
+"4.2 L'oxydoréduction",
+A("Relie chaque mot à sa définition.",[["Oxydation","Perte d'électrons (en biochimie : 2 e⁻ + 2 H⁺)"],["Réduction","Gain d'électrons"],["Oxydoréduction","Les deux en même temps : si l'un perd, l'autre gagne"]],"En biochimie, on parle aussi de déshydrogénation."),
+Q("Quelles enzymes font les oxydations en biochimie ?",["Les déshydrogénases","Les kinases","Les hydrolases"],"Elles retirent 2 atomes d'hydrogène."),
+Q("Lactate + NAD⁺ → pyruvate + NADH,H⁺. Que se passe-t-il ?",["Le lactate est oxydé, le NAD⁺ est réduit","Le lactate est réduit, le NAD⁺ est oxydé","Rien n'est oxydé"],"Enzyme : lactate déshydrogénase."),
+Q("Pyruvate + NADH,H⁺ → lactate + NAD⁺. Que se passe-t-il ?",["Le pyruvate est réduit, le NADH,H⁺ est oxydé","Le pyruvate est oxydé","Le NAD⁺ est réduit"],"Même enzyme, dans l'autre sens."),
+Q("Lactate → pyruvate : quel groupement devient quoi ?",["Alcool secondaire –CH(OH)– → cétone –CO–","Aldéhyde → acide","Cétone → alcool"],"Il faut retirer 2 H : celui du C et celui du OH."),
+Q("Pourquoi 2 e⁻ + 2 H⁺ en biochimie ?",["La molécule perd 2 atomes d'hydrogène, et NAD⁺/FAD prennent les électrons par paire","Parce qu'il y a 2 molécules d'eau","C'est une convention sans raison"],"Un H = 1 e⁻ + 1 H⁺."),
+Q("En chimie générale, une oxydation peut-elle ne retirer qu'1 électron ?",["Oui, ex. Fe²⁺ → Fe³⁺ + 1 e⁻","Non, toujours 2","Non, jamais d'électron"],"Le concept est le même : oxyder = enlever des électrons."),
+Q("Premier rôle des coenzymes NAD⁺ et FAD ?",["Capter les 2 e⁻ et 2 H⁺, qui seraient toxiques libres (radicaux libres, acidification)","Fabriquer de l'ATP directement","Transporter l'oxygène"],"Ils deviennent NADH,H⁺ et FADH₂."),
+Q("Deuxième rôle : être régénérés. Qui réoxyde le NADH,H⁺ ?",["La chaîne respiratoire, avec l'O₂ accepteur final (phosphorylation oxydative)","Une kinase","L'hydrolyse"],"Sans NAD⁺ libre, la réaction s'arrête."),
+Q("En diététique, que font les antioxydants (vitamines C et E) ?",["Ils neutralisent les radicaux libres par oxydoréduction","Ils apportent de l'énergie","Ils digèrent les glucides"],"Les radicaux libres sont des molécules instables qui abîment les cellules.")
+]};
+LV.c4b={id:"c4b",t:"Enzymes et équilibres",s:"Chimie 4 · Les réactions (4.3 et 4.4)",ic:"🧪",items:[
+"4.3 Phosphorylation, isomérisation, décarboxylation",
+A("Relie chaque enzyme à son travail.",[["Kinase","Ajoute un phosphate (venant d'un ATP)"],["Phosphatase","Retire un phosphate par hydrolyse (libère un Pi)"],["Isomérase","Change la forme, même formule brute"],["Décarboxylase","Retire un CO₂"],["Carboxylase","Fixe un CO₂ (nouvelle fonction –COOH)"]],"Le nom de l'enzyme dit souvent ce qu'elle fait."),
+Q("Lors d'une phosphorylation, l'ATP apporte…",["Le phosphate et l'énergie","Seulement de l'eau","Un électron"],"C'est un transfert de phosphate, souvent sur un –OH."),
+Q("Ajouter ou retirer un phosphate sur une enzyme sert à…",["L'allumer ou l'éteindre : réguler une voie métabolique","La digérer","La rendre insoluble"],"Ex. : la pyruvate déshydrogénase (Krebs)."),
+Q("L'isomérisation est-elle réversible ?",["Oui","Non","Seulement dans le foie"],"Changement de forme, même formule brute."),
+Q("Décarboxylation + oxydation en même temps : comment l'appelle-t-on ?",["Décarboxylation oxydative (enzyme : déshydrogénase)","Carboxylation","Hydratation"],"On la retrouve avant et dans le cycle de Krebs."),
+"4.4 Réversibilité et loi d'action de masse",
+Q("Une réaction irréversible…",["Ne marche que dans un seul sens","Marche dans les deux sens","N'a pas d'enzyme"],"Ex. : hexokinase."),
+Q("La glucose-6-phosphatase refait du glucose à partir du glucose-6-P. Est-ce l'hexokinase à l'envers ?",["Non : enzyme différente, réactifs différents (H₂O/Pi au lieu d'ATP/ADP)","Oui, c'est la même réaction","Oui, dans le foie seulement"],"C'est le piège de la fiche."),
+Q("Une réaction réversible…",["Peut aller dans les deux sens, un équilibre s'installe","Ne va que dans un sens","S'arrête toujours"],"Comme les deux plateaux d'une balance."),
+Q("Qu'est-ce qui décide du sens d'une réaction réversible ?",["La loi d'action de masse","La température seule","La couleur des molécules"],"Si on modifie une concentration, la réaction part dans le sens qui s'oppose au changement."),
+T(B_SENS,"↑ A (A + B ⇄ C + D)",0,"Le côté gauche est trop rempli : sens 1."),
+T(B_SENS,"↓ D (A + B ⇄ C + D)",0,"Le côté droit se vide : sens 1."),
+T(B_SENS,"↑ C (A + B ⇄ C + D)",1,"Le côté droit est trop rempli : sens 2."),
+T(B_SENS,"↓ B (A + B ⇄ C + D)",1,"Le côté gauche se vide : sens 2."),
+Q("Glucose-6-P ⇄ fructose-6-P pendant la glycolyse : quel sens ?",["Sens 1 (vers le fructose-6-P) : le G6P augmente et le F6P est consommé","Sens 2","Aucun"],"En néoglucogenèse ou glycogénolyse, c'est l'inverse (sens 2)."),
+Q("La réaction part toujours…",["Du côté trop rempli vers le côté qui se vide","Du côté qui se vide vers le côté rempli","Au hasard"],"C'est la loi d'action de masse.")
+]};
+
+/* ---------------- CHIMIE 5 · LE pH ---------------- */
+var B_PH=[["Acidose","pH < 7,35"],["Normal","7,35 à 7,45"],["Alcalose","pH > 7,45"]];
+var B_PKA=[["Forme acide domine","R–COOH, NH₄⁺"],["Forme basique domine","R–COO⁻, NH₃"],["50 % / 50 %",""]];
+LV.c5={id:"c5",t:"L'échelle du pH",s:"Chimie 5 · Le pH",ic:"💧",items:[
+"5.1 Acide, pH et échelle",
+Q("Un acide est une molécule capable de…",["Céder un ion H⁺ (un proton)","Fixer un H⁺","Céder un électron"],"Plus il y a de H⁺ dans un milieu, plus il est acide."),
+Q("Le pH (potentiel hydrogène)…",["Mesure le niveau d'acidité, sans unité","Se mesure en grammes","Mesure la température"],"pH = − log [H⁺]."),
+Q("Dans l'eau, le H⁺ se lie à l'eau et forme…",["H₃O⁺","OH⁻","H₂"],"On écrit aussi pH = − log [H₃O⁺]."),
+Q("Plus il y a de H⁺, plus le pH est…",["Bas","Haut","Proche de 7"],"À cause du « − log »."),
+C("1 unité de pH en moins = combien de fois plus de H⁺ ?",10,"pH 3 a 10 fois plus de H⁺ que pH 4."),
+Q("Sur l'échelle de 0 à 14, que vaut le pH neutre ?",["7, dans l'eau pure à 25 °C","0","14"],"En dessous : acide. Au-dessus : basique (alcalin)."),
+A("Relie chaque aliment à son pH (valeurs de ton livre).",[["Citron","2,5"],["Vinaigre","3"],["Tomate","4"],["Carotte","6"],["Blanc d'œuf","8"]],"Le blanc d'œuf est basique."),
+A("Relie chaque liquide de l'organisme à son pH.",[["Suc gastrique","≈ 2"],["Salive","6,5 à 7"],["Sang","7,35 à 7,45"],["Bile","7,5 à 8"],["Urine","4,5 à 7,8"]],"L'urine varie beaucoup."),
+T(B_PH,"Sang à pH 7,00",0,"« Neutre » en chimie mais acidose pour le sang : situation grave."),
+T(B_PH,"Sang à pH 7,40",1,"Normal."),
+T(B_PH,"Sang à pH 7,30",0,"Sous 7,35 : acidose."),
+T(B_PH,"Sang à pH 7,50",2,"Au-dessus de 7,45 : alcalose."),
+Q("Pourquoi l'estomac doit-il être très acide ?",["C'est indispensable à la digestion des protéines","Pour absorber le glucose","Pour fabriquer la bile"],"Le suc gastrique contient de l'HCl."),
+Q("Et l'intestin grêle, légèrement alcalin ?",["C'est favorable à l'absorption","Il digère les protéines par l'acide","Il est neutre"],"Le pH varie le long du tube digestif."),
+Q("Les agrumes sont acides au goût. Une fois métabolisés, ils laissent…",["Des résidus alcalins","Des résidus très acides","Rien"],"Le goût ne dit pas l'effet métabolique."),
+Q("L'alimentation modifie-t-elle beaucoup le pH du sang ?",["Peu : l'organisme le régule étroitement","Énormément","Seulement le matin"],"Le pH du sang est très surveillé."),
+"5.2 Acides forts, acides faibles et pKa",
+A("Relie chaque type d'acide à son comportement.",[["Acide fort (HCl)","Se dissocie complètement, réaction irréversible"],["Acide faible (R–COOH)","Réaction réversible, dépend du pH du milieu"]],"L'acide faible suit la loi d'action de masse."),
+Q("Quel est l'exemple d'acide fort de ta fiche ?",["L'acide chlorhydrique (HCl) du suc gastrique","L'acide acétique","Les acides carboxyliques"],"HCl → H⁺ + Cl⁻."),
+Q("Dans R–COOH ⇄ R–COO⁻ + H⁺, comment appelle-t-on R–COO⁻ ?",["La base conjuguée","L'acide fort","Un cation"],"Acide faible ⇄ base conjuguée + H⁺."),
+Q("Le pKa, c'est…",["Le pH auquel la molécule est à moitié dissociée (50/50)","Le pH du sang","La concentration en H⁺"],"pKa = − log Ka, Ka = constante d'acidité."),
+T(B_PKA,"pH du milieu < pKa",0,"Beaucoup de H⁺ : la molécule garde son H⁺."),
+T(B_PKA,"pH du milieu > pKa",1,"Peu de H⁺ : la molécule a perdu son H⁺."),
+T(B_PKA,"pH du milieu = pKa",2,"Demi-dissociation."),
+Q("Acide carboxylique (pKa ≈ 4–5) dans le sang (pH 7,4) ?",["Forme R–COO⁻","Forme R–COOH","50/50"],"pH > pKa."),
+Q("Pourquoi c'est important pour les acides aminés ?",["Leur état chargé dépend du pH du milieu","Ils n'ont pas de pKa","Ils sont toujours neutres"],"L'état ionique d'une molécule dépend du pH."),
+"5.3 Les bases",
+Q("Une base est une molécule capable de…",["Fixer un H⁺ : effet alcalinisant (le pH monte)","Céder un H⁺","Céder un électron"],"Dans l'organisme : surtout des bases faibles (ex. la fonction amine)."),
+Q("NH₃ + H⁺ ⇄ NH₄⁺. Que sont NH₃ et NH₄⁺ ?",["Ammoniac (base faible) et ion ammonium (acide conjugué)","Deux acides forts","Deux ions négatifs"],"pKa = 9."),
+Q("Dans l'urine (pH 4,5 à 7,8), quelle forme est éliminée ?",["L'ion ammonium NH₄⁺","L'ammoniac NH₃","Le diazote N₂"],"pH < pKa (9) : beaucoup de H⁺, l'ammoniac les fixe.")
+]};
+
+var CHI_STATIONS=[
+ {id:"atome",icon:"atom",name:"L'atome",sub:"Fiche chimie 1",desc:"Noyau, électrons, couches, octet et électronégativité.",levels:[LV.c1a,LV.c1b]},
+ {id:"liaisons",icon:"bond",name:"Les liaisons",sub:"Fiche chimie 2",desc:"Covalente, ionique, polarité, liaison hydrogène, hydrophile ou hydrophobe.",levels:[LV.c2a,LV.c2b]},
+ {id:"molecules",icon:"mol",name:"Les molécules",sub:"Fiche chimie 3",desc:"Formules, isomères et groupements fonctionnels.",levels:[LV.c3]},
+ {id:"reactions",icon:"react",name:"Les réactions",sub:"Fiche chimie 4",desc:"Eau, oxydoréduction, enzymes, réversibilité et loi d'action de masse.",levels:[LV.c4a,LV.c4b]},
+ {id:"ph",icon:"ph",name:"Le pH",sub:"Fiche chimie 5",desc:"Acides, bases, pKa et pH du sang.",levels:[LV.c5]},
+ {id:"defi",icon:"star",name:"Défi du prologue",sub:"Révision express",desc:"15 questions tirées de toute la chimie. Les notions de ton carnet passent en priorité.",levels:[{id:"cx",t:"Révision express",s:"Toutes les fiches de chimie",ic:"⏱",defi:"chi",n:15}]}
+];
+
+/* ---------------- GLUCIDES · FICHE 1 ---------------- */
+var B_OSID=[["Ose","1 seule unité"],["Oligoside","2 à 10 oses"],["Polyholoside","plus de 10 oses"]];
+var B_ALD=[["Aldose","fonction aldéhyde (C1)"],["Cétose","fonction cétone (C2)"]];
+var B_HOMO=[["Homoglycanne","un seul type d'ose"],["Hétéroglycanne","plusieurs oses différents"]];
+LV.g1a={id:"g1a",t:"Rôles et classification",s:"Fiche 1 · Classification (parties 1 et 2)",ic:"🗂",items:[
+"1 Rôles et place dans l'alimentation",
+Q("Quel est le premier rôle des glucides ?",["Principale source d'énergie de l'organisme (par leur catabolisme)","Construire les muscles","Transporter l'oxygène"],"Ils sont dégradés pour produire de l'ATP."),
+C("1 g de glucides apporte combien de kcal ?",4,"1 g = 4 kcal = 17 kJ.","kcal"),
+C("Et combien de kJ ?",17,"4 kcal = 17 kJ.","kJ"),
+Q("Quelle part de l'apport énergétique doivent représenter les glucides ?",["40 à 55 %","10 à 15 %","70 à 80 %"],"Repère à connaître."),
+Q("Sous quelle forme les glucides sont-ils mis en réserve ?",["En glycogène, dans le foie et les muscles squelettiques, en quantité limitée","En amidon dans le foie","En cellulose"],"Au-delà, l'excès est transformé en graisses."),
+Q("Quel rôle de structure ont les glucides dans la membrane ?",["Liés à des lipides ou protéines (glycolipides, glycoprotéines) : reconnaissance cellulaire, groupes sanguins ABO","Ils forment la bicouche","Ils transportent l'eau"],"On en trouve aussi dans la matrice du tissu conjonctif (mucopolysaccharides)."),
+A("Relie chaque ose à la molécule où on le trouve.",[["Ribose","ARN (et ATP, NAD⁺, FAD, coenzyme A)"],["Désoxyribose","ADN"]],"Les glucides font partie des acides nucléiques."),
+A("D'où viennent les glucides ?",[["Exogènes","De l'alimentation, surtout végétale"],["Endogènes","Fabriqués par le corps (glycogénolyse, néoglucogenèse)"]],"Néoglucogenèse : à partir de molécules non glucidiques."),
+Q("Quelle est l'exception à l'origine végétale des glucides ?",["Le nourrisson, dont le seul glucide est le lactose du lait","Le sportif","La personne âgée"],"Le lactose est d'origine animale."),
+"2 La classification",
+T(B_OSID,"Glucose",0,"Une seule unité (monomère)."),
+T(B_OSID,"Fructose",0,"Un ose."),
+T(B_OSID,"Saccharose",1,"Diholoside (2 oses)."),
+T(B_OSID,"Maltose",1,"Diholoside."),
+T(B_OSID,"Amidon",2,"Des milliers de glucoses."),
+T(B_OSID,"Cellulose",2,"Jusqu'à 10 000 glucoses."),
+A("Relie chaque famille à sa définition.",[["Oses","1 seule unité"],["Osides","Au moins 2 oses liés"],["Holosides","Uniquement des oses"],["Hétérosides","Oses + partie non glucidique (aglycone)"]],"Les holosides se divisent en oligosides et polyholosides."),
+A("Relie chaque holoside à sa taille.",[["Oligoside","2 à 10 oses (surtout 2 : diholosides)"],["Polyholoside","Plus de 10 oses, jusqu'à des milliers"]],"Diholosides : saccharose, lactose, maltose."),
+T(B_HOMO,"Amidon",0,"Que du glucose."),
+T(B_HOMO,"Glycogène",0,"Que du glucose."),
+T(B_HOMO,"Cellulose",0,"Que du glucose."),
+T(B_HOMO,"Hémicelluloses",1,"Plusieurs oses différents."),
+A("Diététique ou biochimie : relie les synonymes.",[["Monosaccharide","Ose"],["Disaccharide","Diholoside"],["Polysaccharide","Polyholoside (polyoside)"]],"Mêmes molécules, deux vocabulaires."),
+A("En diététique, relie chaque catégorie à son contenu.",[["Glucides simples","Oses + diholosides, digérés et absorbés vite"],["Glucides complexes","Amidon, glycogène : digestion plus lente"],["Fibres","Non digérées"]],"Le piège : les diholosides sont « simples » en diététique mais des osides en biochimie."),
+Q("« Le sucre », au singulier, désigne…",["Le saccharose","Le glucose","Tous les glucides"],"« Les sucres » = oses et disaccharides : évite ce mot dans une copie de biochimie."),
+Q("Simple ou complexe suffit-il à prévoir l'effet sur la glycémie ?",["Non : le pain blanc (amidon) la fait presque autant monter que le saccharose","Oui, toujours","Oui, sauf pour les fruits"],"Les lentilles (amidon + protéines + fibres) la font monter bien plus doucement."),
+Q("Qu'est-ce qui allonge le séjour dans l'estomac et diminue le pic de glycémie ?",["Le volume du repas, les protéines, les fibres et les lipides","L'eau seule","Le sucre"],"Les oses sont absorbés dans l'intestin grêle : plus le séjour gastrique est long, plus le pic est faible.")
+]};
+LV.g1b={id:"g1b",t:"Les oses",s:"Fiche 1 · Classification (partie 3)",ic:"⬡",items:[
+"3 Les oses : définition",
+Q("Un ose, c'est…",["Une seule chaîne de 3 à 6 C non ramifiée, avec un carbonyle et plusieurs –OH","Une chaîne ramifiée de 20 C","Deux sucres liés"],"La plus petite unité des glucides."),
+A("Relie chaque fonction carbonyle à son nom d'ose.",[["Aldéhyde","Aldose"],["Cétone","Cétose"]],"On nomme aussi selon le nombre de carbones."),
+A("Relie chaque nombre de carbones à son nom.",[["3 C","Triose"],["5 C","Pentose"],["6 C","Hexose"]],"Ex. : glucose = hexose aldose."),
+T(B_ALD,"Glycéraldéhyde",0,"Triose aldose."),
+T(B_ALD,"Dihydroxyacétone",1,"Triose cétose."),
+T(B_ALD,"Ribose",0,"Pentose aldose."),
+T(B_ALD,"Glucose",0,"Hexose aldose."),
+T(B_ALD,"Galactose",0,"Hexose aldose."),
+T(B_ALD,"Fructose",1,"Hexose cétose."),
+Q("Glucose, galactose et fructose sont des isomères. Leur formule brute ?",["C₆H₁₂O₆","C₁₂H₂₂O₁₁","C₅H₁₀O₅"],"Même formule, atomes rangés différemment."),
+Q("Les deux trioses sont…",["Des intermédiaires de la glycolyse, sous forme phosphorylée","Des fibres","Des polyols"],"Glycéraldéhyde-3-P et DHAP."),
+"Fischer et séries D / L",
+Q("En représentation de Fischer…",["La chaîne est verticale, C1 en haut, l'alcool primaire (CH₂OH) en bas","La chaîne forme un cycle","Le C1 est en bas"],"Chaque croisement = un carbone, ses –OH à droite ou à gauche."),
+Q("Pour savoir si un ose est D ou L, on regarde…",["Le –OH de l'avant-dernier carbone (le dernier C asymétrique)","Le –OH du C1","Le nombre de carbones"],"À droite → D ; à gauche → L."),
+Q("Les formes D et L d'un ose sont…",["Images l'une de l'autre dans un miroir (énantiomères)","Identiques","Des anomères"],"Comme la main droite et la main gauche."),
+Q("Les oses de notre alimentation et de notre organisme sont…",["Tous de la série D","Tous de la série L","Moitié D, moitié L"],"À retenir."),
+Q("Le dihydroxyacétone a-t-il une série D/L ?",["Non","Oui, D","Oui, L"],"Il n'a pas de carbone asymétrique."),
+"La cyclisation",
+Q("Dans l'eau (liquides du corps), pentoses et hexoses…",["Se referment en cycle : c'est leur forme la plus stable","Restent linéaires","Se coupent en deux"],"La fonction carbonyle réagit avec un –OH de la même molécule."),
+Q("Pour le glucose, le cycle se forme entre…",["Le C1 et le –OH du C5, par un pont oxygène","Le C1 et le C6","Le C2 et le C4"],"Le C1 porte alors un nouveau –OH (fonction hémiacétal)."),
+Q("Règle de passage de Fischer à Haworth : un –OH à droite en Fischer passe…",["En dessous du cycle","Au-dessus du cycle","Dans le cycle"],"À gauche → au-dessus."),
+A("Relie chaque anomère à la position du –OH du C1 (carbone anomérique).",[["α","–OH en bas"],["β","–OH en haut"]],"La cyclisation crée ces deux formes."),
+A("Relie chaque cycle à sa forme.",[["Pyrane","6 côtés (5 C + 1 O) : glucopyranose, galactopyranose"],["Furane","5 côtés (4 C + 1 O) : fructofuranose, ribofuranose"]],"Le fructose fait un cycle à 5."),
+Q("Pourquoi α ou β est-il important ?",["Cela change la liaison entre deux oses : amidon (digéré) contre cellulose (non digérée)","Cela change la formule brute","Cela change la couleur"],"On le voit avec les osides.")
+]};
+
+/* ---------------- GLUCIDES · FICHE 2 ---------------- */
+LV.build={id:"build",t:"Assemble le diholoside",s:"Fiche 2 · Les 5 diholosides",ic:"⬡",game:"build"};
+LV.g2={id:"g2",t:"Liaisons et sucres",s:"Fiche 2 · Les oligosides",ic:"🔗",items:[
+"1 La liaison osidique",
+Q("La liaison osidique se forme entre…",["Le –OH du carbone anomérique d'un ose et un –OH d'un autre ose","Deux C1 sans –OH","Un ose et l'eau"],"C1 pour un aldose, C2 pour un cétose."),
+A("Relie chaque réaction à ce qu'elle fait sur la liaison osidique.",[["Condensation","Forme la liaison, une molécule d'eau part"],["Hydrolyse","Coupe la liaison avec de l'eau (digestion)"]],"Il reste un seul oxygène qui fait le pont : C–O–C."),
+Q("Sous quelle forme les oses doivent-ils être pour se lier ?",["Cyclique","Linéaire","Phosphorylée"],"La liaison est α ou β selon le –OH anomérique engagé, et c'est fixé une fois pour toutes."),
+Q("D'où vient le pouvoir réducteur d'un ose (Fehling positif) ?",["Du carbone anomérique libre (–OH hémiacétal)","Du C6","Du nombre de carbones"],"S'il est engagé dans la liaison, il le perd."),
+A("Réducteur ou non ?",[["Au moins un carbone anomérique libre","Diholoside réducteur"],["Les deux carbones anomériques engagés","Non réducteur (saccharose)"]],"Test de Fehling."),
+A("Relie chaque type de liaison à ce qu'elle relie.",[["O-osidique","Un ose à un autre ose (diholosides)"],["Hétérosidique","Un ose à une molécule non glucidique (aglycone)"],["N-osidique","Un ose à une base azotée, par son N (adénosine)"]],"Adénosine = ribose + adénine."),
+"2 Lire le nom d'un diholoside",
+Q("α-D-glucopyranosyl(1→2)β-D-fructofuranoside : que veut dire « -osyl » ?",["Cet ose engage son carbone anomérique","Cet ose est libre","Cet ose est un cétose"],"C'est le premier ose."),
+A("Que veut dire la fin du nom du 2ᵉ ose ?",[["Fin en -oside","Il engage aussi son C anomérique → non réducteur"],["Fin en -ose","Son C anomérique est libre → réducteur"]],"Saccharose : -oside, non réducteur."),
+Q("Dans (1→2), que représentent les chiffres ?",["Les carbones reliés : C1 du 1ᵉʳ ose, C2 du 2ᵉ","Le nombre d'oses","La série D"],"Pyran / furan : cycle à 6 / à 5 côtés."),
+"3 Les 5 diholosides",
+Q("Quelle est la formule brute commune aux 5 diholosides ?",["C₁₂H₂₂O₁₁","C₆H₁₂O₆","C₁₂H₂₄O₁₂"],"Ce sont des isomères (2 × C₆H₁₂O₆ − H₂O)."),
+Q("Où sont-ils hydrolysés ?",["Par des enzymes de la bordure en brosse de l'intestin grêle","Dans la bouche","Dans l'estomac"],"Saccharase, lactase, maltase, isomaltase."),
+A("Relie chaque diholoside à son origine.",[["Saccharose","Canne, betterave, fruits"],["Lactose","Lait"],["Maltose","Digestion des chaînes de l'amidon"],["Isomaltose","Digestion des ramifications de l'amidon"],["Cellobiose","Motif de la cellulose"]],"Le maltose est rarement libre dans les aliments."),
+A("Relie chaque diholoside à son enzyme.",[["Saccharose","Saccharase (= invertase)"],["Lactose","Lactase"],["Maltose","Maltase"],["Isomaltose","Isomaltase"],["Cellobiose","Aucune chez l'humain"]],"Pas de cellulase."),
+Q("Maltose et cellobiose : mêmes oses, mêmes carbones (1→4). Différence ?",["α pour le maltose, β pour le cellobiose : nos enzymes ne coupent que l'α","Le nombre de glucoses","Le cellobiose est un cétose"],"Même différence qu'entre amidon et cellulose."),
+"4 Les diholosides dans l'alimentation",
+Q("Quelle est la référence du pouvoir sucrant (PS = 1) ?",["Le saccharose","Le glucose","Le fructose"],"On compare tout au saccharose."),
+O("Classe du plus sucrant au moins sucrant.",["Fructose","Saccharose","Glucose","Maltose","Lactose"],"Fructose 1,3 · saccharose 1 · glucose 0,7 · maltose 0,4 · lactose 0,2."),
+A("Relie chaque édulcorant à son pouvoir sucrant.",[["Aspartam","≈ 200"],["Saccharine","400"],["Lactose","0,2"]],"Les édulcorants intenses sucrent des centaines de fois plus."),
+Q("Le sucre inverti, c'est…",["Glucose + fructose à parts égales, issus de l'hydrolyse du saccharose","Du saccharose cristallisé","Du lactose chauffé"],"Hydrolyse par l'invertase ou par un acide."),
+Q("Quels sont les intérêts du sucre inverti ?",["Il sucre plus, est plus soluble, cristallise moins et aide à conserver","Il ne contient pas de calories","Il est non digéré"],"Confitures, sirops : moins d'eau disponible pour les microbes."),
+Q("Quel aliment est un sucre inverti naturel ?",["Le miel (les abeilles ont une invertase)","Le lait","Le pain"],"Glucose + fructose."),
+Q("Pourquoi « inverti » ?",["Le pouvoir rotatoire passe de +66,5° à environ −20°","Le goût s'inverse","La couleur change"],"Le sens de rotation de la lumière s'inverse."),
+Q("Que devient la lactase avec l'âge ?",["Elle diminue souvent","Elle augmente","Elle ne change jamais"],"Très active chez l'enfant."),
+A("Intolérance au lactose : relie chaque effet à sa cause.",[["Diarrhée osmotique","Le lactose non hydrolysé attire l'eau"],["Gaz, ballonnements, douleurs","Le microbiote du côlon le fermente"]],"Le lactose est aussi un ingrédient (biscuits, sauces) et un excipient de médicaments."),
+Q("Raffinose (3 oses) et stachyose (4 oses) des légumineuses…",["Ne sont pas digérés : fermentés dans le côlon, d'où les flatulences","Sont digérés par la lactase","Sont des polyholosides"],"Ce sont des oligosides.")
+]};
+
+/* ---------------- GLUCIDES · FICHE 3 ---------------- */
+var B_DIG=[["Digéré","polyoside de réserve"],["Fibre","non digérée"]];
+LV.g3a={id:"g3a",t:"Amidon et glycogène",s:"Fiche 3 · Polyholosides (parties 1 et 2)",ic:"🌾",items:[
+"1 Qu'est-ce qu'un polyholoside ?",
+Q("Un polyholoside, c'est…",["Un holoside de plus de 10 oses, souvent des centaines à des milliers","Un ose ramifié","Un diholoside"],"Synonymes : polyosides, polysaccharides, glycanes."),
+T(B_HOMO,"Glycogène",0,"Que du glucose."),
+T(B_HOMO,"Pectines",1,"Plusieurs oses différents."),
+T(B_DIG,"Amidon",0,"Réserve végétale."),
+T(B_DIG,"Glycogène",0,"Réserve animale."),
+T(B_DIG,"Cellulose",1,"Pas d'enzyme humaine."),
+T(B_DIG,"Hémicelluloses",1,"Fibre."),
+A("Que deviennent-ils ?",[["Polyosides de réserve","Glucose absorbé dans l'intestin grêle"],["Fibres","Arrivent au côlon, fermentées en partie par le microbiote"]],"Les fibres sont les glucides pariétaux (paroi des cellules végétales)."),
+"2 Amidon et glycogène",
+A("Relie chaque polyoside à sa structure.",[["Amylose","Linéaire, α1→4, enroulée en hélice"],["Amylopectine","Ramifiée (en arbre), α1→4 + α1→6"],["Glycogène","Très ramifié et très compact, α1→4 + α1→6"]],"Liaison α1→6 = ramification."),
+A("Une ramification tous les combien de glucoses ?",[["Amylopectine","Tous les 20 à 30"],["Glycogène","Tous les 8 à 10"]],"Le glycogène est plus ramifié."),
+A("Relie chaque polyoside à sa taille.",[["Amylose","Des centaines de glucoses"],["Amylopectine","Des milliers"]],"Le glycogène aussi : des milliers."),
+A("Test à l'iode : relie.",[["Amylose","Bleu nuit"],["Amylopectine","Rouge-violet"],["Glycogène","Brun"]],"Plus c'est ramifié, moins c'est bleu."),
+Q("De quoi est fait l'amidon ?",["≈ 20 % d'amylose (5 à 30 %) + ≈ 80 % d'amylopectine","100 % amylose","Glycogène + cellulose"],"Réserve des végétaux, en grains."),
+Q("Où est stocké le glycogène ?",["Foie et muscles, en grains dans le cytosol","Tissu adipeux","Os"],"Réserve des animaux."),
+Q("Quels aliments apportent de l'amidon ?",["Céréales, tubercules, légumineuses, certains fruits (banane, châtaigne)","Viande et poisson","Huiles"],"C'est la principale source de glucose de l'alimentation."),
+Q("L'amidon à froid…",["Est insoluble (il retient environ 40 % d'eau)","Se dissout totalement","Est déjà digéré"],"Il faut le chauffer."),
+C("À quelle température (en °C, minimum de la fourchette) l'amidon commence-t-il à former l'empois ?",70,"Chauffé dans l'eau à 70–80 °C, il gonfle : gélatinisation (empesage).","°C",0),
+Q("Pourquoi la cuisson rend-elle l'amidon plus digestible ?",["Les amylases l'attaquent plus facilement une fois gélatinisé","Elle le transforme en glucose","Elle supprime les liaisons α"],"Lien avec l'IG : cuisson longue = IG plus haut."),
+Q("Trouve-t-on beaucoup de glycogène dans l'assiette ?",["Très peu : il disparaît pendant la maturation de la viande","Oui, dans tous les légumes","Oui, dans les céréales"],"On en trouve dans le foie, la viande de cheval non maturée, huîtres, moules."),
+Q("Digestion de l'amidon : les amylases coupent…",["Les liaisons α1→4, donnant surtout maltose et isomaltose","Toutes les liaisons","Les liaisons β1→4"],"Maltase et isomaltase libèrent ensuite le glucose.")
+]};
+var B_SOL3=[["Soluble ou gélifiante",""],["Insoluble",""]];
+LV.g3b={id:"g3b",t:"Les fibres",s:"Fiche 3 · Polyholosides (parties 3 et 4)",ic:"🥬",items:[
+"3 Les fibres alimentaires",
+Q("Les fibres alimentaires sont…",["Des constituants (surtout végétaux) non hydrolysables par nos enzymes","Des protéines","Des glucides digérés lentement"],"Ni coupées ni absorbées dans le grêle : elles arrivent au gros intestin."),
+Q("Amidon ou cellulose : la seule différence ?",["α1→4 dans l'amidon, β1→4 dans la cellulose","Le nombre de glucoses","L'un est un fructose"],"Pas de cellulase chez l'humain."),
+Q("La cellulose est…",["Un homoglycane de glucose (jusqu'à 10 000), linéaire, β1→4, insoluble","Un hétéroglycane soluble","Un polymère de fructose"],"Elle retient l'eau."),
+Q("Les hémicelluloses sont…",["Des hétéroglycanes ramifiés de 100 à 200 oses, surtout β1→4","De la cellulose pure","Des protéines"],"Glucose, xylose, arabinose, acide glucuronique…"),
+Q("La lignine est…",["Non glucidique (polymère phénolique), très insoluble","Un ose","Une fibre soluble"],"Son, légumes secs."),
+A("Relie chaque fibre à une source.",[["Cellulose","Parois de tous les végétaux"],["Hémicelluloses","Son, céréales complètes"],["Pectines","Pomme, agrumes"],["Inuline","Artichaut, pissenlit"],["Chitine","Carapaces de crustacés, champignons"]],"La lignine : son, légumes secs."),
+T(B_SOL3,"Pectines",0,"Très solubles, forment des gels."),
+T(B_SOL3,"Gommes, alginates, carraghénanes",0,"Additifs texturants gélifiants (guar, gomme arabique, agar)."),
+T(B_SOL3,"Inuline",0,"Polymère de fructose soluble."),
+T(B_SOL3,"Cellulose",1,"Retient l'eau."),
+T(B_SOL3,"Lignine",1,"Très insoluble."),
+T(B_SOL3,"Chitine",1,"Origine animale."),
+Q("L'amidon résistant, c'est…",["L'amidon qui échappe aux amylases (banane verte, pain rassis)","Un amidon très digeste","Le glycogène"],"Amidon cuit puis refroidi : rétrogradation."),
+Q("La chitine ressemble à la cellulose (β1→4), mais…",["Chaque glucose porte un groupe acétamide sur le C2","Elle est en α","Elle est faite de fructose"],"Origine animale : carapaces, insectes, champignons."),
+A("Pectines en cuisine : relie.",[["Hautement méthylées","Gel avec du sucre en milieu acide (confitures, gelées)"],["Faiblement méthylées","Gel avec du calcium, sans beaucoup de sucre (confitures allégées)"]],"Utile pour les produits allégés."),
+"4 Les effets des fibres",
+Q("Comment les fibres augmentent-elles la satiété ?",["Volume sans énergie : densité énergétique ↓","Elles apportent beaucoup de calories","Elles accélèrent la vidange"],"Sensation de satiété."),
+Q("Effet sur le transit ?",["Elles le régulent : l'accélèrent s'il est lent, le ralentissent s'il est rapide","Elles le bloquent","Aucun"],"Les insolubles retiennent l'eau → contre la constipation."),
+A("Fermentation dans le côlon : quelle part de chaque fibre ?",[["Cellulose","≈ 60 %"],["Hémicelluloses","≈ 80 %"],["Pectines","Toutes (100 %)"]],"Microbiote : 10⁹ à 10¹¹ bactéries/g."),
+Q("Que produit cette fermentation ?",["Des acides gras volatils (acétique, propionique, butyrique) et des gaz","Du glucose","Des protéines"],"Énergie pour la muqueuse, mais flatulences."),
+Q("Comment les fibres gélifiantes agissent-elles sur la glycémie ?",["Elles ralentissent la vidange gastrique et le contact avec la muqueuse : pic glycémique plus faible","Elles augmentent le pic","Elles bloquent l'insuline"],"Intérêt chez le diabétique."),
+Q("Et sur les lipides ?",["Elles gênent les lipases et piègent cholestérol et sels biliaires","Elles augmentent l'absorption des graisses","Aucun effet"],"Intérêt pour prévenir les maladies cardiovasculaires."),
+Q("Comment introduire les fibres en pratique ?",["Progressivement, selon la tolérance (gaz, ballonnements)","D'un coup, en grande quantité","Uniquement le soir"],"Surtout avec les fibres très fermentées : pectines, légumineuses.")
+]};
+
+/* ---------------- GLUCIDES · FICHE 4 ---------------- */
+var B_DER=[["Dérivé d'ose","un ose modifié, seul"],["Hétéroside","ose(s) + aglycone"]];
+LV.g4={id:"g4",t:"Dérivés et hétérosides",s:"Fiche 4 · Dérivés des oses et hétérosides",ic:"❓",items:[
+"1 Dérivé d'ose ou hétéroside",
+A("Ne pas confondre : relie.",[["Dérivé d'ose","Un ose seul dont une fonction a été modifiée : pas de liaison osidique"],["Hétéroside","Ose(s) relié(s) par une liaison osidique à une aglycone (génine)"]],"Ex. : sorbitol (dérivé), anthocyanes (hétéroside)."),
+T(B_DER,"Acide glucuronique",0,""),T(B_DER,"Sorbitol",0,""),T(B_DER,"Désoxyribose",0,""),T(B_DER,"Glucosamine",0,""),
+T(B_DER,"Nucléosides (adénosine)",1,""),T(B_DER,"Anthocyanes",1,""),T(B_DER,"Saponines",1,""),
+"2 Les dérivés des oses",
+A("Relie chaque famille à sa modification.",[["Acides uroniques","L'alcool primaire (C6) est oxydé en –COOH"],["Polyols","Le C=O est réduit en –OH : il ne reste que des alcools"],["Désoxyoses","Un –OH est remplacé par un H"],["Osamines","Un –OH (en C2) est remplacé par –NH₂"]],"Schéma 1 de ta fiche, à partir du glucose et du ribose."),
+A("Relie chaque famille à des exemples.",[["Acides uroniques","Acide glucuronique, galacturonique, iduronique"],["Polyols","Glycérol, sorbitol, mannitol, xylitol, inositol"],["Désoxyoses","2-désoxyribose"],["Osamines","Glucosamine, galactosamine, N-acétylglucosamine"]],"Aussi maltitol, lactitol, érythritol (polyols)."),
+Q("Les acides uroniques sont des constituants…",["Du tissu conjonctif et des fibres (pectines, hémicelluloses)","Des triglycérides","De l'ADN"],"Et l'acide glucuronique sert à la conjugaison hépatique."),
+Q("La conjugaison hépatique avec l'acide glucuronique sert à…",["Rendre solubles des molécules pour les éliminer (urine, bile) : détoxification","Stocker l'énergie","Fabriquer du glycogène"],"Ex. : paracétamol, hormones stéroïdes, bilirubine (issue de l'hémoglobine)."),
+Q("Pourquoi l'humain doit-il manger de la vitamine C ?",["Il ne peut pas la fabriquer à partir de l'acide glucuronique","Il la détruit dans le foie","Elle est stockée dans les os"],"La plupart des animaux en sont capables."),
+Q("Le 2-désoxyribose…",["Est le sucre de l'ADN (ribose sans –OH en C2), il rend l'ADN plus stable","Est le sucre de l'ARN","Est un polyol"],"Le ribose est dans l'ARN."),
+Q("À quoi servent les osamines ?",["Glycosaminoglycanes du cartilage et du tissu conjonctif ; la N-acétylglucosamine forme la chitine","Fabriquer l'ATP","Transporter l'oxygène"],"Glucosamine, galactosamine."),
+Q("Glucosamine et chondroïtine en compléments contre l'arthrose…",["Ne sont pas des nutriments essentiels, et leur efficacité est discutée","Sont indispensables","Sont des vitamines"],"La glucosamine est extraite des carapaces de crustacés."),
+A("Relie chaque polyol à sa source.",[["Glycérol","Réduction des trioses ; triglycérides, néoglucogenèse"],["Sorbitol","Fruits (poire, prune, cerise, pêche), confiseries"],["Mannitol","Champignons, choux, oignons"],["Xylitol","Prunes, framboises ; chewing-gums"],["Inositol","Membranes (phosphatidylinositol)"]],"Le sorbitol est un dérivé du glucose."),
+Q("Quels sont les intérêts des polyols ?",["Goût sucré, moins caloriques, non cariogènes, faible effet sur la glycémie","Très caloriques","Riches en fibres"],"L'érythritol : presque 0 kcal."),
+Q("Pourquoi le sorbitol intéresse-t-il le diabétique ?",["Il est transformé en fructose sans insuline","Il fait baisser le cholestérol","Il remplace l'insuline"],"Faible effet sur la glycémie."),
+Q("Quelle est la limite des polyols ?",["Mal absorbés, ils attirent l'eau : ballonnements, diarrhée à forte dose","Ils donnent des caries","Ils sont toxiques pour le foie"],"Tolérance variable selon les personnes."),
+Q("L'acide phytique, c'est…",["L'inositol portant 6 phosphates : réserve de phosphore des plantes","Un acide gras","Un acide uronique"],"Céréales complètes, légumineuses, graines, noix."),
+Q("Pourquoi est-ce un anti-nutriment ?",["Il piège Ca, Fe, Zn et Mg en sels insolubles non absorbés","Il bloque la digestion des protéines","Il détruit la vitamine C"],"Risque de carences si l'apport en minéraux est faible ; effets antioxydants étudiés."),
+"3 Les hétérosides",
+Q("Comment la partie osidique est-elle reliée à l'aglycone ?",["Par une liaison osidique depuis le –OH du carbone anomérique (hydrolysable)","Par une liaison ionique","Par un pont disulfure"],"L'aglycone (génine) est très variée : stéroïde, pigment, base azotée…"),
+A("Rôle de chaque partie de l'hétéroside.",[["Ose","Rend la molécule soluble dans l'eau"],["Aglycone","Porte souvent l'effet biologique"]],"Deux parties, deux rôles."),
+A("Dans notre organisme : relie.",[["Nucléosides","Ribose ou désoxyribose + base azotée (adénosine, dans l'ATP)"],["Glycoprotéines et glycolipides","Reconnaissance cellulaire, groupes sanguins ABO"]],"Liaison N-osidique pour les nucléosides."),
+Q("Glycoside ou glucoside ?",["Glycoside = n'importe quel ose ; glucoside = quand l'ose est le glucose","C'est pareil","Glucoside = n'importe quel ose"],"Tous les glucosides sont des glycosides, pas l'inverse."),
+A("Relie chaque hétéroside à une source.",[["Anthocyanes","Fruits rouges, chou rouge, betterave, aubergine"],["Autres flavonoïdes","Agrumes, pommes, thé, vin rouge"],["Saponines","Légumineuses, quinoa, saponaire"],["Glycosides cardiotoniques","Digitale pourpre, muguet, laurier-rose"]],"Anthocyanes : pigments rouges, bleus, violets."),
+Q("Les anthocyanes sont…",["Des pigments antioxydants ; leurs effets sur la santé sont étudiés mais non démontrés","Des fibres","Des polyols"],"Aglycone : anthocyanidine (cyanidine, delphinidine…), ce sont des flavonoïdes."),
+Q("Les saponines…",["Moussent, ont un goût amer, pourraient baisser le cholestérol, toxiques à forte dose","Sont des sucres très sucrants","Sont des vitamines"],"On rince le quinoa. Usages : savons, shampoings."),
+Q("Les glycosides cardiotoniques (digitaliques)…",["Augmentent la force de contraction du cœur, baissent la fréquence et la conduction","Accélèrent le cœur","Sont sans danger"],"Inotrope +, chronotrope −, dromotrope − : insuffisance cardiaque, marge étroite, surveillance médicale."),
+Q("L'alliine de l'ail, la sésamine du sésame, les xanthones : des hétérosides ?",["Non, ce sont des composés bioactifs mais pas des hétérosides","Oui, tous","Seulement l'alliine"],"Ton cours les classe à tort dans cette famille. Alliine → allicine (odeur, antibactérienne).")
+]};
+
+/* ---------------- GLUCIDES · FICHE 5 ---------------- */
+LV.g5a={id:"g5a",t:"Isomères et lumière",s:"Fiche 5 · Propriétés (parties 1 et 2)",ic:"🔬",items:[
+"1 Les isomères des oses",
+A("Relie chaque type à sa définition.",[["Isomères","Même formule brute, structure différente"],["Stéréo-isomères","Mêmes atomes dans le même ordre, orientés différemment"],["Énantiomères","Images dans un miroir : tous les C* inversés"],["Épimères","Diffèrent par un seul C*"],["Anomères","Diffèrent par le carbone anomérique"]],"Énantiomères, épimères et anomères sont des stéréo-isomères."),
+A("Relie chaque couple à son type.",[["Glucose / fructose","Isomères de fonction (aldose / cétose)"],["D-glucose / L-glucose","Énantiomères"],["Glucose / galactose","Épimères en C4"],["Glucose / mannose","Épimères en C2"],["α-glucose / β-glucose","Anomères"]],"Schéma 1 de ta fiche."),
+Q("Un carbone asymétrique (C*), c'est…",["Un carbone lié à 4 atomes ou groupes différents","Un carbone sans hydrogène","Le C1 de tous les oses"],"Il rend la molécule chirale (non superposable à son image dans un miroir)."),
+Q("Combien de stéréo-isomères pour n carbones asymétriques ?",["2ⁿ","n²","2n"],"Glucose linéaire : 4 C* (C2 à C5)."),
+C("Le glucose linéaire a 4 C*. Combien de stéréo-isomères ?",16,"2⁴ = 16 : 8 de la série D, 8 de la série L."),
+Q("Combien d'énantiomères a chacun d'eux ?",["Un seul","Deux","Seize"],"Son image dans le miroir."),
+Q("α/β et D/L, c'est lié ?",["Non : D/L = –OH de l'avant-dernier C en Fischer ; α/β = –OH anomérique en Haworth","Oui, α = D","Oui, β = L"],"L'amidon (α) et la cellulose (β) sont tous deux faits de D-glucose."),
+"2 Les propriétés optiques",
+Q("Que fait un ose en solution sur la lumière polarisée ?",["Il fait tourner son plan, grâce à ses C*","Il l'absorbe totalement","Rien"],"On le mesure au polarimètre."),
+Q("À quoi sert la mesure au polarimètre ?",["Identifier un ose et le doser (angle proportionnel à la concentration)","Mesurer le pH","Compter les carbones"],"C'est le pouvoir rotatoire."),
+A("Relie chaque sucre à son pouvoir rotatoire.",[["Glucose","+52,5° (dextrogyre)"],["Fructose","−92° (lévogyre)"],["Saccharose","+66,5° (dextrogyre)"]],"Dextrogyre : vers la droite. Lévogyre : vers la gauche."),
+Q("Deux énantiomères ont des pouvoirs rotatoires…",["Opposés : même valeur, signe inverse","Identiques","Nuls"],"Ex. : D-glucose et L-glucose."),
+Q("Le D-fructose est-il dextrogyre ?",["Non : D ne veut pas dire dextrogyre, il est lévogyre","Oui","Oui, comme tout ose D"],"D/L se lit sur la formule ; +/− se mesure."),
+Q("Après hydrolyse du saccharose (+66,5°), la solution passe à environ…",["−20° : le fructose l'emporte, d'où « sucre inverti »","+120°","0°"],"Lien avec la fiche 2."),
+Q("La mutarotation, c'est…",["En solution, α et β se transforment l'un en l'autre via la forme ouverte, jusqu'à un équilibre","La rotation de la molécule entière","La caramélisation"],"Le cycle s'ouvre puis se referme."),
+A("Mutarotation du glucose : proportions à l'équilibre.",[["α-D-glucopyranose","≈ 36 %"],["β-D-glucopyranose","≈ 64 %"],["Forme linéaire","< 0,1 %"]],"Une solution de glucose contient surtout la forme β.")
+]};
+LV.g5b={id:"g5b",t:"Paillasse virtuelle",s:"Fiche 5 · Propriétés (parties 3 à 5)",ic:"🧫",items:[
+"3 Solubilité et chaleur",
+Q("Pourquoi les oses sont-ils très solubles dans l'eau ?",["Leurs nombreux –OH (et le carbonyle) font des liaisons hydrogène avec l'eau","Ils sont hydrophobes","Ils sont ioniques"],"La solubilité augmente avec la température."),
+A("Dans 100 g d'eau à 20 °C, combien se dissout ?",[["Glucose","107 g"],["Fructose","375 g"]],"Le fructose est encore plus soluble."),
+Q("Quel diholoside est peu soluble ?",["Le lactose","Le saccharose","Le maltose"],"Les autres diholosides sont solubles."),
+Q("Conséquence physiologique : le glucose…",["Voyage dissous dans le plasma, mais n'étant pas liposoluble il a besoin des GLUT pour traverser la membrane","Traverse seul la membrane","Est transporté par l'albumine"],"Le plasma est à 90 % d'eau."),
+Q("Pourquoi les confitures et sirops se conservent-ils ?",["Très concentrés en sucres, l'eau n'est plus disponible (pression osmotique) : pas de bactéries","Le sucre tue les vitamines","Ils sont stérilisés par le sucre"],"Peu de levures et moisissures."),
+A("Relie chaque réaction de cuisson à sa définition.",[["Caramélisation","Sucres chauffés seuls qui se dégradent et brunissent"],["Réaction de Maillard","Sucres + acides aminés à la cuisson (croûte du pain, viande grillée)"]],"Maillard donne couleur et goût."),
+"4 Le pouvoir réducteur",
+Q("D'où vient le pouvoir réducteur d'un ose ?",["Du groupement hémiacétal libre (–OH du carbone anomérique)","Du C6","De la cétone uniquement"],"Il peut être oxydé."),
+Q("En s'oxydant, que fait l'ose réducteur ?",["Il réduit d'autres molécules, ex. les sels de cuivre en milieu alcalin et à chaud","Il gagne des électrons","Il se transforme en amidon"],"Fehling est un oxydant ; l'ose est le réducteur."),
+Q("Un aldose oxydé donne…",["Un acide aldonique (glucose → acide gluconique)","Un polyol","Une cétone"],"Ex. au test de Fehling."),
+Q("Test de Fehling positif : que se passe-t-il ?",["Cu²⁺ bleu → précipité rouge brique de Cu₂O, à chaud en milieu alcalin","Bleu → jaune","Rien"],"Le cuivre est réduit, l'ose est oxydé."),
+Q("Saccharose + Fehling ?",["Négatif : il faut d'abord l'hydrolyser","Rouge brique","Brun"],"Son carbone anomérique est engagé."),
+Q("La réduction d'un ose (C=O → –OH) donne…",["Un polyol (alditol, nom en -itol) : glucose → sorbitol","Un acide","Un aldéhyde"],"Lien avec la fiche dérivés."),
+A("Relie chaque test à son usage.",[["Liqueur de Fehling","Mise en évidence des oses réducteurs (qualitatif)"],["DNS","Dosage des oses réducteurs par colorimétrie (jaune → rouge)"],["Eau iodée","Mise en évidence de l'amidon"]],"La glycémie se dose par méthode enzymatique."),
+"5 L'estérification",
+Q("Le principe de l'estérification ?",["Une fonction alcool de l'ose + un acide → ester + eau","Ose + eau → deux oses","Ose + O₂ → CO₂"],"Le cas le plus important : l'ester phosphorique."),
+Q("Glucose + ATP → glucose-6-P + ADP : quelle enzyme ?",["L'hexokinase (une kinase)","La lactase","La phosphatase"],"1ʳᵉ réaction de la glycolyse."),
+Q("Pourquoi phosphoryler le glucose ?",["Le phosphate l'active et le piège : chargé, il ne ressort plus par les GLUT","Pour le rendre insoluble","Pour le transformer en fructose"],"Départ de la glycolyse et du glycogène."),
+Q("Où trouve-t-on aussi des esters phosphoriques ?",["ATP, NAD⁺, acides nucléiques, acide phytique","Cellulose","Amylose"],"Le phosphate est partout dans le métabolisme.")
+]};
+
+/* ---------------- DIGESTION, ABSORPTION, DISTRIBUTION ---------------- */
+LV.voyage={id:"voyage",t:"Le voyage de l'amidon",s:"Digestion · parcours complet",ic:"🚀",game:"voyage"};
+LV.g6a={id:"g6a",t:"La digestion",s:"Digestion des glucides (intro et partie 1)",ic:"🍞",items:[
+"Pourquoi le glucose est au centre",
+Q("Quel est le principal ose assimilé dans l'intestin ?",["Le glucose","Le fructose","Le galactose"],"Il est transporté par le sang puis distribué aux cellules."),
+Q("Que peut devenir le glucose dans la cellule ?",["Énergie, stockage en glycogène, et ses carbones servent à fabriquer d'autres molécules","Uniquement de l'énergie","Uniquement du glycogène"],"Acides gras, glycérol, cholestérol, acides aminés."),
+"Partie 1 · La digestion",
+Q("Quelle est la seule forme absorbable des glucides ?",["Les oses","Les diholosides","Les dextrines"],"Les glucides sont découpés étape par étape."),
+O("Remets les lieux de la digestion des glucides dans l'ordre.",["Bouche","Estomac","Duodénum","Bordure en brosse (jéjunum)"],"Seuls les oses obtenus à la fin sont absorbés."),
+Q("Dans la bouche (pH 7), l'α-amylase salivaire transforme l'amidon en…",["Dextrines + maltose","Glucose","Saccharose"],"Hydrolyse partielle."),
+Q("Que se passe-t-il dans l'estomac (pH 3) pour les glucides ?",["Rien : l'amylase salivaire est dénaturée","L'amidon est absorbé","La lactase agit"],"pH trop acide."),
+Q("Dans le duodénum (pH 6-7), l'α-amylase pancréatique donne…",["Maltose + isomaltose","Glucose","Saccharose"],"Toujours pas absorbable."),
+Q("Par où l'amylase pancréatique arrive-t-elle dans le duodénum ?",["Par le canal de Wirsung","Par le canal cholédoque","Par la veine porte"],"Elle est déversée par le pancréas."),
+Q("Pourquoi parle-t-on d'hydrolyse « partielle » ?",["Les amylases ne coupent que les α1→4 : les produits sont encore trop gros","Elles ne travaillent qu'à moitié","Elles sont dénaturées"],"Seules les glucidases des entérocytes terminent le travail."),
+Q("Ton cours dit que les amylases sont « glycolytiques ». Ça veut dire…",["Qu'elles coupent les glucides (rien à voir avec la glycolyse)","Qu'elles font la glycolyse","Qu'elles produisent de l'ATP"],"Ce sont des hydrolases : elles coupent avec de l'eau."),
+A("Relie chaque glucidase de la bordure en brosse à son action.",[["Maltase","Maltose → glucose + glucose"],["Isomaltase","Isomaltose → glucose + glucose"],["Saccharase","Saccharose → glucose + fructose"],["Lactase","Lactose → galactose + glucose"]],"Saccharose et lactose ne sont digérés qu'à la bordure en brosse."),
+Q("Qui fabrique ces 4 glucidases ?",["Les entérocytes : fixées sur leurs microvillosités, elles forment le « suc intestinal »","Le pancréas","Les glandes salivaires"],"Elles sont fixées, pas libres."),
+Q("Que veut dire « la saccharase est inductible » ?",["Plus il y a de saccharose, plus elle est présente et efficace","Elle disparaît chez l'adulte","Elle ne marche qu'à pH 3"],"À l'inverse, la lactase diminue souvent."),
+Q("La lactase chez l'adulte…",["Diminue, et est même absente chez plus de 50 % des adultes, souvent pour des raisons génétiques","Augmente","Est toujours présente"],"Certaines populations asiatiques ou africaines par exemple ; d'autant plus si l'apport en lactose diminue."),
+A("Intolérance au lactose : relie chaque lieu à ce qui se passe.",[["Intestin grêle","Le lactose reste et attire l'eau (pouvoir osmotique) : douleurs, diarrhées"],["Gros intestin","Le microbiote le fermente : AGV, CO₂, méthane, acide lactique"]],"L'acidification accentue les diarrhées."),
+Q("Pourquoi le lactose retient-il l'eau dans le chyme ?",["Il est hydrophile","Il est hydrophobe","Il est ionique"],"Pouvoir osmotique.")
+]};
+LV.g6b={id:"g6b",t:"Absorption et distribution",s:"Absorption et distribution (parties 2 et 3)",ic:"🔑",items:[
+"Partie 2 · L'absorption",
+Q("Pourquoi le glucose a-t-il besoin d'une protéine de transport ?",["Trop gros et pas liposoluble : il ne passe pas entre les phospholipides","Il est chargé +","Il est hydrophobe"],"Il doit franchir la membrane apicale de l'entérocyte."),
+O("Remets le trajet du glucose dans l'ordre.",["Entrée par SGLT1 (pôle apical)","Traversée de l'entérocyte","Sortie par GLUT2 (pôle basal)","Capillaire sanguin","Veine porte","Foie"],"Passage transépithélial. Le galactose suit le même chemin."),
+Q("Comment fonctionne SGLT1 ?",["Cotransport symport : le glucose entre avec le Na⁺, qui descend son gradient","Uniport sans énergie","Pompe à ATP"],"SGLT = sodium glucose transporter."),
+A("Relie chaque compartiment à sa concentration en Na⁺.",[["Lumière intestinale","Élevée, ≈ 140 mM"],["Entérocyte","Faible, ≈ 10–15 mM (intérieur chargé −)"]],"C'est ce gradient qui fournit l'énergie."),
+Q("Que devient une petite partie du glucose dans l'entérocyte ?",["Elle est utilisée par l'entérocyte lui-même (glycolyse, Krebs)","Elle est stockée en amidon","Elle repart dans la lumière"],"Le reste migre vers le pôle basal."),
+Q("GLUT2, côté basal, c'est…",["Un transport facilité simple (uniport) dans le sens du gradient, sans énergie","Un symport avec Na⁺","Une pompe"],"Pas de consommation d'énergie à ce niveau."),
+Q("À quoi sert la pompe Na⁺/K⁺-ATPase ?",["Expulser le Na⁺ entré avec le glucose, sinon il bloquerait les SGLT","Faire entrer le glucose","Fabriquer de l'ATP"],"3 Na⁺ sortent, 2 K⁺ entrent, en consommant de l'ATP."),
+Q("Globalement, l'absorption du glucose est un transport…",["Actif secondaire : actif, mais de façon indirecte","Passif","Actif primaire"],"L'ATP est consommé par la pompe, pas par SGLT1."),
+C("Quel pourcentage du glucose passe entre les entérocytes (voie paracellulaire) ?",10,"Environ 10 %, par simple diffusion.","%",1),
+Q("Quel est l'effet osmotique de l'absorption ?",["Glucose et Na⁺ entraînent l'eau de la lumière vers le plasma","Le glucose sort de l'eau","Aucun"],"Ce courant facilite le déplacement des solutés."),
+"Partie 3 · La distribution",
+Q("Comment le glucose circule-t-il dans le sang ?",["Librement : il est très hydrosoluble","Fixé à l'albumine","Dans des lipoprotéines"],"Intestin → veine porte → foie → autres tissus."),
+C("Quel pourcentage du glucose le foie récupère-t-il (valeur haute de la fourchette) ?",40,"Le foie récupère 30 à 40 % : il limite l'hyperglycémie.","%",0),
+O("Remets le gradient du glucose dans l'ordre, du plus concentré au moins concentré.",["Plasma","Liquide interstitiel","Cytosol"],"Plasma → interstitiel : diffusion simple. Interstitiel → cellule : GLUT (transport facilité)."),
+A("Relie chaque transporteur à ses cellules.",[["GLUT1 et GLUT3","Neurones, globules rouges"],["GLUT2","Hépatocytes, cellules β du pancréas"],["GLUT4","Muscle cardiaque, muscles striés, tissu adipeux"]],"Seuls les GLUT4 sont régulés par l'insuline."),
+Q("GLUT1 et GLUT3 sont efficaces…",["Même quand la glycémie est faible : ces cellules sont gluco-dépendantes","Seulement quand la glycémie est élevée","Seulement avec de l'insuline"],"Le passage du glucose est toujours assuré."),
+Q("GLUT2 est très efficace…",["Quand la glycémie est élevée : le foie récupère l'excès (glycogène, acides gras, triglycérides)","Quand la glycémie est basse","Jamais"],"Cellules β : elles sécrètent l'insuline."),
+Q("GLUT4 et insuline ?",["Optimaux pour une glycémie classique, vite saturés ; l'insuline augmente leur nombre à la membrane","Insensibles à l'insuline","Présents dans les neurones"],"Ce sont les seuls GLUT insulino-régulés.")
+]};
+
+/* ---------------- GLYCOLYSE ---------------- */
+LV.g7a={id:"g7a",t:"Les 10 réactions",s:"Glycolyse · partie 1",ic:"⛓",items:[
+"Définition",
+Q("La glycolyse est une voie…",["Catabolique qui dégrade le glucose par oxydation","Anabolique qui fabrique du glucose","De stockage"],"Aussi appelée voie d'Embden-Meyerhof."),
+A("Relie chaque mot à sa définition.",[["Catabolisme","Dégrade de grosses molécules en plus petites et libère de l'énergie"],["Anabolisme","Construit de grosses molécules et consomme de l'énergie"]],"La glycolyse est catabolique."),
+Q("Où se déroule la glycolyse ?",["Dans le cytosol de toutes les cellules","Dans la matrice mitochondriale","Seulement dans le foie"],"Rôle : produire de l'ATP."),
+Q("Bilan d'un glucose (6 C) ?",["2 pyruvates (3 C), 2 ATP net, 2 NADH,H⁺","2 lactates, 38 ATP","1 pyruvate, 4 ATP"],"Glucose + 2 NAD⁺ + 2 ADP + 2 Pi → 2 pyruvate + 2 NADH,H⁺ + 2 ATP + 2 H₂O."),
+Q("Que veut dire Pi ?",["Phosphate inorganique (acide phosphorique libre)","Pyruvate","Une protéine"],"Il est utilisé à la réaction 6."),
+"1.1 et 1.2 · Étapes et bilan",
+A("Relie chaque grande étape à ce qui s'y passe.",[["Étape 1 (réactions 1 à 3)","Glucose → fructose-1,6-bisP : 2 ATP consommés"],["Étape 2 (réactions 4 et 5)","Clivage en 2 glycéraldéhyde-3-P"],["Étape 3 (réactions 6 à 10, ×2)","4 ATP et 2 NADH,H⁺ produits"]],"Étape 1 : 2 phosphorylations, 1 isomérisation."),
+C("Combien d'ATP consommés à l'étape 1 ?",2,"Réactions 1 (hexokinase) et 3 (PFK-1).","ATP"),
+C("Combien d'ATP produits à l'étape 3 ?",4,"Réactions 7 et 10, chacune ×2.","ATP"),
+C("Bilan net en ATP ?",2,"−2 + 4 = +2 ATP.","ATP"),
+"1.3 et 1.4 · Les 10 réactions",
+O("Remets les 10 molécules dans l'ordre.",["Glucose","Glucose-6-P","Fructose-6-P","Fructose-1,6-bisP","Glycéraldéhyde-3-P","1,3-bisphosphoglycérate","3-phosphoglycérate","2-phosphoglycérate","Phosphoénolpyruvate","Pyruvate"],"Le DHAP (réaction 4) devient G3P (réaction 5)."),
+A("Réactions 1 à 5 : relie chaque enzyme à sa réaction.",[["Hexokinase","1 · Glucose → glucose-6-P"],["Phosphoglucose isomérase","2 · Glucose-6-P → fructose-6-P"],["Phosphofructokinase-1","3 · Fructose-6-P → fructose-1,6-bisP"],["Aldolase","4 · Clivage en DHAP + G3P"],["Triose-P isomérase","5 · DHAP → G3P"]],"Étapes 1 et 2."),
+A("Réactions 6 à 10 : relie chaque enzyme à sa réaction.",[["G3P déshydrogénase","6 · G3P → 1,3-bisphosphoglycérate"],["Phosphoglycérate kinase","7 · → 3-phosphoglycérate (1er ATP)"],["Phosphoglycérate mutase","8 · → 2-phosphoglycérate"],["Énolase","9 · → phosphoénolpyruvate"],["Pyruvate kinase","10 · PEP → pyruvate (2e ATP)"]],"Tout ×2."),
+A("Relie chaque réaction à son type.",[["Réactions 1 et 3","Phosphorylation"],["Réaction 4","Clivage"],["Réaction 6","Oxydation + phosphorylation"],["Réactions 7 et 10","Transfert de phosphate"],["Réaction 9","Déshydratation"]],"Réactions 2, 5 et 8 : isomérisations."),
+Q("Quelles sont les 3 réactions irréversibles ?",["Hexokinase (1), PFK-1 (3), pyruvate kinase (10)","Aldolase, énolase, mutase","Les réactions 6, 7 et 8"],"Ce sont elles que la cellule régule. Les 7 autres sont réversibles."),
+Q("Réaction 1 : pourquoi le glucose phosphorylé est-il piégé ?",["Chargé, il ne ressort plus par les GLUT","Il devient insoluble","Il est trop gros"],"Foie et cellules β : glucokinase."),
+Q("Réaction 2 : que se passe-t-il ?",["Même formule, atomes réarrangés : le glucose devient un fructose","Ajout d'un phosphate","Perte d'eau"],"Isomérisation."),
+Q("Réaction 3 (PFK-1) : pourquoi est-ce l'enzyme clé ?",["Elle contrôle la vitesse ; après elle la molécule est engagée ; freinée par l'ATP","Elle produit l'ATP","Elle est réversible"],"Point de contrôle principal."),
+Q("Réaction 5 : pourquoi tout se fait ×2 ensuite ?",["Seul le G3P continue : le DHAP devient G3P, d'où 2 G3P par glucose","Il y a 2 glucoses","L'ATP double"],"Triose-P isomérase."),
+Q("Réaction 6 : qu'a-t-elle de particulier ?",["Seule oxydation de la voie : NAD⁺ → NADH,H⁺, phosphate venant du Pi (pas d'un ATP)","Elle consomme 2 ATP","Elle libère du CO₂"],"G3P déshydrogénase."),
+Q("Réaction 7 : le piège ?",["Elle produit un ATP (au niveau du substrat) mais elle est réversible","Elle est irréversible","Elle consomme de l'ATP"],"Phosphoglycérate kinase."),
+Q("Réaction 8 : que fait la mutase ?",["Le phosphate passe du C3 au C2","Elle ajoute un phosphate","Elle coupe la molécule"],"3-phosphoglycérate → 2-phosphoglycérate."),
+Q("Réaction 9 : que se passe-t-il ?",["Perte d'une molécule d'eau : le PEP a un très haut potentiel énergétique","Ajout d'eau","Oxydation"],"Énolase."),
+Q("Quel est le rôle du Mg²⁺ ?",["Cofacteur des kinases et de l'énolase : ni consommé, ni produit","Il est consommé à chaque réaction","Il remplace l'ATP"],"Cofacteur."),
+"1.5 Hexokinase ou glucokinase",
+A("Relie chaque caractéristique à l'enzyme.",[["La plupart des cellules, forte affinité","Hexokinase"],["Foie et cellules β, faible affinité","Glucokinase"]],"La glucokinase n'est efficace que quand la glycémie est élevée."),
+A("Freinée par le glucose-6-P ?",[["Hexokinase","Oui, elle ralentit si son produit s'accumule"],["Glucokinase","Non, elle continue à travailler"]],"Même logique que GLUT2 : le foie absorbe le surplus après un repas sans priver les autres organes.")
+]};
+LV.g7b={id:"g7b",t:"Le devenir des NADH,H⁺",s:"Glycolyse · partie 2",ic:"⛓",items:[
+"2.1 Le problème",
+Q("Pourquoi faut-il réoxyder le NADH,H⁺ ?",["La réserve de NAD⁺ est limitée : sans NAD⁺, la réaction 6 et toute la glycolyse s'arrêtent","Il est toxique pour l'ADN","Pour fabriquer du glucose"],"Plus de NAD⁺ = plus d'ATP."),
+A("Relie chaque contexte à sa solution.",[["O₂ utilisable (aérobie)","Navette + chaîne respiratoire : +6 ATP"],["O₂ insuffisant ou pas de mitochondries","Fermentation lactique (LDH) : aucun ATP en plus"]],"Dans les deux cas, la glycolyse elle-même est identique."),
+"2.2 En aérobie",
+Q("Le NADH,H⁺ du cytosol peut-il entrer dans la mitochondrie ?",["Non : ce sont ses électrons qui passent, grâce à une navette","Oui, directement","Oui, par GLUT"],"Il redevient NAD⁺ dans le cytosol."),
+A("Relie chaque navette à ses caractéristiques.",[["Malate-aspartate","Foie, cœur, rein → NAD⁺, environ 3 ATP"],["Glycérol-3-phosphate","Muscle, cerveau → FAD, environ 2 ATP"]],"Pour aller plus loin."),
+Q("Dans la chaîne respiratoire, l'énergie des électrons sert à…",["Pomper des H⁺ vers l'espace intermembranaire (gradient de H⁺)","Fabriquer du glucose","Chauffer la cellule"],"Les électrons passent de protéine en protéine dans la membrane interne."),
+Q("Quel est l'accepteur final des électrons ?",["L'O₂, qui forme de l'eau","Le pyruvate","Le NAD⁺"],"Sans O₂, toute la chaîne se bloque."),
+Q("L'ATP synthase (aussi appelée ATPase)…",["Utilise les H⁺ qui redescendent leur gradient pour fabriquer de l'ATP","Consomme de l'ATP","Transporte le glucose"],"Même principe que SGLT1 : un ion qui descend son gradient fournit l'énergie."),
+Q("Le piège : pompe Na⁺/K⁺-ATPase et ATP synthase…",["La pompe consomme de l'ATP, l'ATP synthase en produit","Les deux produisent de l'ATP","Les deux en consomment"],"Ne pas confondre."),
+C("Combien d'ATP rapporte chaque NADH,H⁺ (valeur classique) ?",3,"2 × 3 = 6 ATP pour les 2 NADH,H⁺.","ATP"),
+C("Glycolyse aérobie : combien d'ATP par glucose ?",8,"2 + 6 = 8 (selon les sources 6, 7 ou 8 : utilise le chiffre de ton cours).","ATP"),
+Q("Ces 8 ATP comptent-ils le devenir du pyruvate ?",["Non : le pyruvate continue dans la mitochondrie (Krebs)","Oui","Seulement dans le foie"],"Ces ATP-là ne sont pas comptés."),
+"2.3 En anaérobie",
+Q("Dans quel cas le muscle passe-t-il en anaérobie ?",["Effort intense : l'O₂ n'arrive plus en quantité suffisante","Au repos","Après un repas"],"La chaîne respiratoire ne régénère plus le NAD⁺."),
+Q("Pyruvate + NADH,H⁺ ⇄ lactate + NAD⁺ : quelle enzyme ?",["Lactate déshydrogénase (LDH), réversible","Pyruvate kinase","Pyruvate déshydrogénase"],"Le pyruvate récupère les électrons et les H⁺."),
+Q("Cette réaction produit-elle de l'ATP ?",["Non : son seul but est de rendre du NAD⁺","Oui, 2","Oui, 36"],"La glycolyse peut continuer."),
+A("Accepteur final des électrons : relie.",[["Aérobie","O₂"],["Anaérobie","Pyruvate"]],"Comparaison importante."),
+A("Que devient le lactate ?",[["Foie","Retransformé en glucose"],["Cœur","Retransformé en pyruvate pour l'énergie"]],"Pour le muscle, c'est un déchet."),
+Q("Beaucoup de lactate peut entraîner…",["Une acidification, avec par exemple des crampes (selon ton cours)","Une hypoglycémie","Une alcalose"],"Les recherches récentes nuancent ce lien ; pour l'examen, retiens ton cours."),
+Q("Le trajet muscle → sang → foie (lactate → glucose) → sang → muscle s'appelle…",["Le cycle de Cori (cycle de l'acide lactique)","Le cycle de Krebs","La navette malate"],"Recyclage du lactate."),
+C("Glycolyse anaérobie : combien d'ATP par glucose ?",2,"Glucose + 2 ADP + 2 Pi → 2 lactate + 2 ATP + 2 H₂O.","ATP"),
+"2.4 et 2.5 · Les hématies",
+Q("Pourquoi les hématies font-elles toujours de la fermentation lactique ?",["Elles n'ont pas de mitochondries","Elles manquent d'O₂","Elles n'ont pas de LDH"],"Même quand l'O₂ est abondant (elles le transportent !)."),
+Q("« Anaérobie » veut dire…",["Sans utiliser l'O₂ (pas forcément sans O₂)","Toujours sans O₂","Avec beaucoup d'O₂"],"Piège classique. Les hématies sont aussi gluco-dépendantes."),
+Q("Comparé à la glycolyse aérobie (8 ATP), l'anaérobie (2 ATP) est…",["4 fois moins rentable","2 fois moins","19 fois moins"],"Et ≈ 19 fois moins que la dégradation complète (38 ÷ 2).")
+]};
+LV.g7c={id:"g7c",t:"La régulation",s:"Glycolyse · partie 3",ic:"⛓",items:[
+"Trois situations",
+A("Relie chaque situation à l'effet sur la glycolyse.",[["Après un repas","Glycolyse stimulée"],["Cellule au repos, assez d'ATP","Glycolyse ralentie"],["Jeûne ou effort prolongé","Glycolyse freinée"]],"Elle a lieu partout, son intensité change."),
+"3.1 Après un repas",
+A("Les deux raisons pour lesquelles le glucose est utilisé après un repas.",[["Gradient de concentration","Plus la glycémie est haute, plus le glucose entre facilement"],["Insuline","Sécrétée par les cellules β face à l'hyperglycémie"]],"Phase post-prandiale."),
+Q("Les deux effets de l'insuline sur la glycolyse ?",["Plus de GLUT4 à la membrane (myocytes, adipocytes) et plus d'enzymes (glucokinase, PFK-1, pyruvate kinase)","Moins de GLUT4","Elle bloque la PFK-1"],"Les vésicules contenant les GLUT4 migrent vers la membrane."),
+"3.2 Cellule au repos",
+Q("Quel type de régulation dans une cellule au repos ?",["Allostérique : une molécule se fixe sur une enzyme et la freine","Hormonale","Génétique"],"Un effet domino qui remonte la voie."),
+O("Remets l'effet domino dans l'ordre.",["L'ATP en excès freine la PFK-1","Le fructose-6-P s'accumule","Le glucose-6-P augmente (loi d'action de masse)","Le glucose-6-P freine l'hexokinase","Le glucose s'accumule dans la cellule","Le glucose reste dans le sang pour d'autres cellules"],"Une partie du glucose-6-P part aussi en glycogène (stock limité)."),
+Q("Pourquoi le glucose-6-P peut-il remonter ?",["L'isomérisation (réaction 2) est réversible","L'hexokinase est réversible","La PFK-1 recule"],"Loi d'action de masse."),
+Q("La glucokinase du foie est-elle freinée par le glucose-6-P ?",["Non","Oui","Seulement la nuit"],"Ce frein concerne l'hexokinase."),
+Q("L'idée clé de la situation B ?",["Même avec de l'insuline, la régulation interne prime : une cellule qui a assez d'énergie laisse le glucose aux autres","L'insuline gagne toujours","La cellule stocke tout"],"Le gradient s'annule, le glucose n'entre plus."),
+"3.3 Jeûne ou effort prolongé",
+Q("En jeûne, le glucagon agit surtout sur…",["Le foie : il freine la pyruvate kinase et favorise la néoglucogenèse","Les muscles","Les neurones"],"Il est sécrété par les cellules α du pancréas."),
+Q("Pourquoi les muscles utilisent-ils les acides gras en jeûne ?",["Insuline basse (peu de GLUT4) et lipolyse du tissu adipeux, car ils n'ont pas de récepteurs au glucagon","Le glucagon les y oblige","Ils n'ont plus de mitochondries"],"β-oxydation."),
+Q("Pour qui le glucose est-il préservé ?",["Neurones, hématies, myocytes en anaérobie","Tissu adipeux","Foie"],"Les cellules qui ne vivent que de glucose."),
+"3.4 Bilan",
+A("Relie chaque situation à son type de régulation.",[["Après un repas","Hormonale (+ gradient)"],["Cellule au repos","Allostérique (interne)"],["Jeûne / effort","Hormonale"]],"Signal : insuline / ATP élevé / glucagon."),
+Q("Quelles enzymes sont toujours régulées ?",["Celles des 3 étapes irréversibles : hexokinase/glucokinase, PFK-1, pyruvate kinase","L'aldolase et l'énolase","Les isomérases"],"⊣ = inhibe.")
+]};
+
+/* ---------------- PENTOSES PHOSPHATES ---------------- */
+LV.g8={id:"g8",t:"Le détour des pentoses",s:"Voie des pentoses phosphates",ic:"↪",items:[
+"En une phrase",
+Q("Que fait la voie des pentoses phosphates ?",["Une partie du glucose-6-P est oxydée pour produire 2 NADPH,H⁺ et 1 ribose-5-P","Elle produit de l'ATP","Elle stocke le glucose"],"Elle fournit des « matières premières »."),
+Q("Où se déroule-t-elle ?",["Dans le cytosol de presque toutes les cellules","Dans la mitochondrie","Dans le noyau"],"Elle ne produit ni ne consomme d'ATP."),
+"Glycolyse ou pentoses ?",
+A("Relie chaque caractéristique de la voie des pentoses.",[["Objectif","NADPH,H⁺ et ribose-5-P"],["Point de départ","Glucose-6-phosphate"],["Coenzyme produite","NADPH,H⁺"],["Bilan en ATP","0 (nul)"],["Enzyme clé","G6PD"]],"Glycolyse : ATP, glucose, NADH,H⁺, +2 ATP, PFK-1."),
+A("NADH,H⁺ ou NADPH,H⁺ ?",[["NADH,H⁺","Énergie : réoxydé par la chaîne respiratoire"],["NADPH,H⁺","Construire et protéger : biosynthèses, glutathion"]],"Même famille, rôles différents."),
+Q("À quoi sert le « P » en plus du NADPH ?",["Groupement phosphate qui fait que les enzymes ne les confondent pas","Il apporte de l'énergie","Il le rend insoluble"],"Les deux sont des coenzymes d'oxydoréduction."),
+Q("Le ribose-5-P sert à…",["Fabriquer les nucléotides, donc l'ADN et l'ARN","Faire du glycogène","Faire de l'ATP directement"],"C'est un pentose (5 C), d'où le nom de la voie."),
+"L'équation",
+Q("Quelle est l'équation bilan ?",["Glucose-6-P + 2 NADP⁺ + H₂O → ribose-5-P + 2 NADPH,H⁺ + CO₂","Glucose + 2 ATP → 2 pyruvates","G6P → glycogène"],"Terme par terme sur ta fiche."),
+C("Combien de fois le glucose-6-P est-il oxydé ?",2,"À chaque fois un NADP⁺ récupère les électrons et les H⁺."),
+Q("Pourquoi un CO₂ est-il libéré ?",["Un carbone est retiré : on passe de 6 C à 5 C","Pour faire de l'ATP","Pour former de l'eau"],"Et une molécule d'eau est consommée."),
+"L'adipocyte",
+Q("L'adipocyte a besoin de beaucoup de NADPH,H⁺ mais de peu de ribose-5-P. Que devient le ribose en trop ?",["Recyclé par transcétolase et transaldolase en fructose-6-P et glycéraldéhyde-3-P","Éliminé","Stocké"],"3 pentoses-P → 2 hexoses-P + 1 triose-P, qui retournent dans la glycolyse."),
+"Régulation et lieux",
+Q("Qui freine la G6PD ?",["Le NADPH,H⁺ (effecteur allostérique)","L'ATP","L'insuline"],"Plus il y en a, plus la voie ralentit. Même logique que l'ATP sur la PFK-1."),
+A("Relie chaque lieu à l'usage de la voie.",[["Foie","Acides gras et cholestérol"],["Tissu adipeux","Acides gras"],["Glande mammaire","Acides gras pendant la lactation"],["Globules rouges","Protection"]],"Où la voie est importante."),
+"Les globules rouges",
+Q("Quel est le problème dans le globule rouge ?",["En contexte aérobie se forme du H₂O₂ toxique, qui abîme hémoglobine et membrane : hémolyse","Il manque de glucose","Il fabrique trop d'ATP"],"Le globule rouge éclate."),
+A("Relie chaque acteur à son rôle (pile rechargeable).",[["Glutathion réduit","La pile : neutralise H₂O₂ → H₂O (glutathion peroxydase)"],["NADPH,H⁺","Le chargeur : recharge le glutathion oxydé (glutathion réductase)"]],"Le NADPH,H⁺ vient de la voie des pentoses phosphates.")
+]};
+
+/* ---------------- FRUCTOSE ---------------- */
+LV.g9={id:"g9",t:"L'aiguillage du fructose",s:"Métabolisme du fructose",ic:"🔀",items:[
+"Le trajet",
+Q("Où le fructose est-il surtout métabolisé, et pour quoi faire ?",["Dans le foie, pour rejoindre la glycolyse","Dans le cerveau, pour faire du glycogène","Dans le muscle, pour faire des protéines"],"Il devient DHAP et glycéraldéhyde-3-P."),
+O("Remets le trajet du fructose dans l'ordre.",["Absorbé par les entérocytes","Circule librement dans le plasma","Veine porte","Organes (surtout le foie)","Entrée par GLUT5"],"Très hydrophile."),
+Q("GLUT5 est…",["Indépendant de l'insuline","Régulé par l'insuline","Un symport avec Na⁺"],"Le fructose va aussi au tissu musculaire et adipeux."),
+"Les 3 réactions",
+O("Remets les 3 enzymes dans l'ordre.",["Fructokinase","Fructose-1-P aldolase","Triose kinase"],"Fructose → F1P → DHAP + glycéraldéhyde → G3P."),
+Q("Fructokinase : sur quel carbone se fixe le phosphate ?",["Le C1 (fructose-1-P), 1 ATP, irréversible","Le C6","Le C3"],"Comme l'hexokinase pour le glucose."),
+Q("Fructose-1-P aldolase : que donne-t-elle ?",["DHAP + glycéraldéhyde (sans phosphate)","2 pyruvates","Glucose"],"Le DHAP participe directement à la glycolyse."),
+Q("Pourquoi faut-il la triose kinase ?",["Le glycéraldéhyde n'a pas de phosphate : elle lui en ajoute (1 ATP) → G3P","Pour couper le fructose","Pour faire du lactose"],"Il peut alors entrer dans la glycolyse."),
+Q("Où le fructose rejoint-il la glycolyse ?",["Après la PFK-1 : il échappe à son principal point de contrôle","Avant l'hexokinase","Dans la mitochondrie"],"Puis DHAP → G3P (triose-P isomérase)."),
+Q("Où trouve-t-on aussi de la fructokinase, en faible quantité ?",["Muqueuse de l'intestin grêle et rein","Cerveau","Globules rouges"],"Surtout dans le foie."),
+Q("Dans le tissu adipeux, comment le fructose est-il utilisé ?",["Par l'hexokinase → fructose-6-P, qui entre au niveau de la PFK-1","Par la fructokinase","Il n'est pas utilisé"],"Réaction 3 de la glycolyse."),
+"Le bilan",
+A("ATP consommés : relie.",[["Glucose","Hexokinase + PFK-1"],["Fructose (foie)","Fructokinase + triose kinase"]],"2 ATP consommés dans les deux cas."),
+C("Bilan net en ATP pour un fructose ?",2,"Identique au glucose : 2 pyruvates + 2 ATP + 2 NADH,H⁺.","ATP"),
+"Particularités",
+A("La triple particularité du fructose : relie.",[["Très rapide","Fructokinase plus active que la glucokinase, entre après la PFK-1"],["Sans contrôle hormonal","Indépendant de l'insuline (GLUT5, fructokinase)"],["Favorise les graisses","Fructose → acétyl-CoA → acides gras, VLDL"]],"Risque d'hypertriacylglycérolémie et d'hypercholestérolémie."),
+Q("Son intérêt pour le diabétique a été revu à la baisse. Pourquoi ?",["Toxicité en excès (ex. rétinopathies)","Il fait monter l'insuline","Il est mal absorbé"],"Indépendant de l'insuline, mais pas sans risque."),
+Q("Autres effets du fructose ?",["Peu d'effet sur la satiété ; impliqué dans l'insulinorésistance","Très rassasiant","Protège le foie"],"Contrairement au glucose."),
+"En pratique",
+Q("L'indice glycémique (IG), c'est…",["La vitesse à laquelle un aliment fait monter la glycémie, par rapport au glucose (IG = 100)","La quantité de sucre","Le nombre de calories"],"On donne 50 g de glucides et on suit la glycémie (3 h selon cette fiche)."),
+C("Quel est l'IG du fructose ?",19,"Très bas : il passe d'abord par le foie.","",0),
+Q("En excès, le fructose…",["Fait monter les triglycérides, baisser le HDL, favorise stéatose et insulinorésistance","Fait baisser les triglycérides","Est sans effet"],"Ce n'est pas un « bon sucre » pour autant."),
+Q("Quel conseil ?",["Limiter le fructose ajouté (sirops, sodas, miel, agave), pas les fruits entiers","Supprimer les fruits","En manger plus"],"Fibres, protéines et cuisson font aussi varier l'IG.")
+]};
+
+/* ---------------- GALACTOSE ---------------- */
+var B_LACT=[["Intolérance au lactose",""],["Galactosémie",""]];
+LV.g10={id:"g10",t:"Le galactose du lait",s:"Métabolisme du galactose",ic:"🍼",items:[
+"En une phrase et trajet",
+Q("D'où vient le galactose et pour qui est-il important ?",["De l'hydrolyse du lactose ; important chez le nouveau-né","De l'amidon ; chez le sportif","Du saccharose ; chez l'adulte"],"Peu abondant chez l'adulte."),
+O("Remets le trajet du galactose dans l'ordre.",["Lactose hydrolysé → galactose + glucose","Absorbé comme le glucose","Transporté librement dans le sang","Entre dans l'hépatocyte par un transporteur spécifique"],"Dans le sens du gradient de concentration."),
+Q("En quoi est-il transformé dans le foie ?",["Glucose-6-P","Fructose-1-P","Lactate"],"Qui rejoint les voies du glucose."),
+"Les 4 réactions",
+O("Remets les enzymes dans l'ordre, du galactose au glucose-6-P.",["Galactokinase","Galactose-1-P uridyl transférase","Phosphoglucomutase"],"La 4e (épimérase) recycle l'UDP-galactose."),
+A("Relie chaque enzyme à ce qu'elle fait.",[["Galactokinase","Galactose → galactose-1-P (1 ATP, irréversible)"],["Uridyl transférase","Échange : galactose-1-P + UDP-glucose → UDP-galactose + glucose-1-P"],["Phosphoglucomutase","Glucose-1-P ⇄ glucose-6-P (réversible)"],["UDP-galactose 4-épimérase","UDP-galactose ⇄ UDP-glucose (réversible)"]],"L'épimérisation est un type d'isomérisation."),
+Q("Lors du transfert, que se passe-t-il ?",["L'UDP quitte le glucose pour le galactose ; le glucose récupère le phosphate (glucose-1-P)","Le galactose est coupé","Un ATP est produit"],"Échange."),
+Q("Que peut devenir le glucose-6-P formé ?",["Glycolyse ou glycogenèse (dans le foie)","Lactose","Fructose"],"Deux devenirs."),
+Q("Ton cours parle d'« épimérase » et de « glucogénèse » pour la réaction 3. Les termes exacts ?",["Phosphoglucomutase et glycogenèse","Aldolase et néoglucogenèse","Rien à corriger"],"Correction de ta fiche."),
+Q("Pourquoi l'UDP-glucose est-il important ?",["Il resservira à la réaction 2 et c'est la forme active du glucose pour le glycogène","Il produit de l'ATP","Il est éliminé"],"Régénéré par l'épimérase."),
+"La glande mammaire",
+Q("Pendant la lactation, que fait la glande mammaire ?",["Elle fabrique du galactose à partir du glucose pour produire le lactose","Elle dégrade le lactose","Elle stocke le galactose"],"L'épimérase fonctionne dans l'autre sens (UDP-glucose → UDP-galactose)."),
+Q("Que fait la lactose synthase ?",["UDP-galactose + glucose → lactose + UDP","Glucose + fructose → saccharose","Lactose → galactose + glucose"],"Elle assemble le lactose du lait."),
+"Les pathologies",
+Q("La galactosémie, c'est…",["Une maladie génétique : une enzyme manque, le galactose s'accumule","Une allergie au lait","Un manque de lactase"],"Galactose élevé dans le sang et les urines (galactosurie)."),
+A("Relie chaque déficit à sa gravité.",[["Déficit en galactokinase","Galactose s'accumule : cataracte"],["Déficit en uridyl transférase","Le galactose-1-P s'accumule aussi : forme beaucoup plus grave (foie, reins, cerveau)"]],"Retard mental possible dans la forme grave."),
+Q("Pourquoi une cataracte ?",["L'aldose réductase (NADPH) transforme le galactose en galactitol, qui s'accumule dans le cristallin","Le galactose détruit la rétine","Manque de vitamine A"],"Voie de secours."),
+Q("Prise en charge diététique ?",["Éviction à vie du galactose donc du lactose (lire les étiquettes) ; nourrisson : lait infantile sans lactose (ex. soja)","Réduire un peu le lait","Ajouter de la lactase"],"Lactose ajouté dans charcuteries, plats préparés, médicaments."),
+Q("Pourquoi peut-on vivre sans manger de galactose ?",["L'épimérase fabrique l'UDP-galactose à partir du glucose","Le galactose n'est pas utile","Le foie en stocke à vie"],"Pour les glycoprotéines et glycolipides."),
+T(B_LACT,"Il manque la lactase (intestin)",0,"Le lactose n'est pas digéré."),
+T(B_LACT,"Il manque une enzyme du foie",1,""),
+T(B_LACT,"Ballonnements, diarrhée",0,""),
+T(B_LACT,"Cataracte, atteinte du foie et du cerveau",1,"Le galactose est toxique."),
+T(B_LACT,"Réduction ; yaourts et fromages affinés souvent tolérés",0,""),
+T(B_LACT,"Éviction stricte et à vie",1,"")
+]};
+
+/* ---------------- RÉCAP MÉTABOLISME ---------------- */
+LV.g11={id:"g11",t:"Qui fait quoi ?",s:"Récap métabolisme des glucides",ic:"🗺",items:[
+"L'idée générale",
+Q("Dans le récap, la glycolyse est…",["L'autoroute centrale ; les 3 autres voies sont branchées dessus","Une voie annexe","Une voie de stockage"],"Fructose et galactose y entrent, la voie des pentoses en sort."),
+"Le tableau récap",
+A("Relie chaque voie à son objectif.",[["Glycolyse","Produire de l'ATP"],["Pentoses phosphates","Produire NADPH,H⁺ et ribose-5-P"],["Fructose","Rejoindre la glycolyse"],["Galactose","Être transformé en glucose-6-P"]],"Chaque voie en une phrase."),
+A("Relie chaque voie à son point de départ.",[["Glycolyse","Glucose"],["Pentoses phosphates","Glucose-6-P (pris à la glycolyse)"],["Fructose","Fructose"],["Galactose","Galactose (du lactose)"]],"Départs."),
+A("Relie chaque voie à son arrivée.",[["Glycolyse","2 pyruvates"],["Pentoses phosphates","Ribose-5-P + NADPH,H⁺ + CO₂"],["Fructose","DHAP + glycéraldéhyde-3-P"],["Galactose","Glucose-6-P"]],"Arrivées."),
+A("Relie chaque voie à son lieu.",[["Glycolyse","Cytosol, toutes les cellules"],["Pentoses phosphates","Cytosol ; foie, tissu adipeux, glande mammaire, globules rouges"],["Fructose","Surtout le foie (aussi muscle, tissu adipeux)"],["Galactose","Foie (hépatocytes)"]],"Tout se passe dans le cytosol."),
+A("Relie chaque voie à son enzyme à retenir.",[["Glycolyse","PFK-1"],["Pentoses phosphates","G6PD"],["Fructose","Fructokinase"],["Galactose","Galactokinase"]],"Les enzymes clés."),
+A("Relie chaque voie à son bilan en ATP.",[["Glycolyse","+2 net"],["Pentoses phosphates","0 (bilan nul)"],["Fructose","+2 net, comme le glucose"]],"Le galactose : pas de bilan dans le tableau."),
+A("Et ensuite ? Relie.",[["Pyruvate","Mitochondrie (avec O₂) ou lactate (sans O₂)"],["NADPH,H⁺","Acides gras, cholestérol, glutathion"],["Ribose-5-P","Nucléotides"],["Glucose-6-P (du galactose)","Glycolyse ou glycogenèse"]],"Les devenirs."),
+Q("Le fructose entre dans la glycolyse…",["Après la PFK-1 (très rapide, sans insuline)","Avant l'hexokinase","Dans la mitochondrie"],"Voir la carte d'ensemble.")
+]};
+
+/* ---------------- KREBS ---------------- */
+LV.g12a={id:"g12a",t:"Avant le cycle",s:"Cycle de Krebs · définition et pyruvate dH",ic:"🎡",items:[
+"Définition",
+Q("Le cycle de Krebs (cycle de l'acide citrique), c'est…",["La voie de dégradation oxydative complète des substrats énergétiques","Une voie de stockage du glucose","La digestion des protéines"],"La dernière étape de la dégradation des molécules énergétiques."),
+Q("Quels substrats y sont dégradés ?",["Glucides, acides gras, acides aminés, corps cétoniques","Uniquement le glucose","Uniquement les lipides"],"Tous entrent par un intermédiaire commun : l'acétyl-CoA."),
+Q("Où se déroule-t-il ?",["Exclusivement dans la matrice mitochondriale","Dans le cytosol","Dans le noyau"],"Avec les chaînes respiratoires et l'ATPase, il permet la formation d'ATP."),
+A("Le cycle est « amphibolique » : relie.",[["Catabolique","Il dégrade pour produire de l'énergie"],["Anabolique","Il fournit des précurseurs (néoglucogenèse, certains acides aminés)"]],"Les deux à la fois."),
+"Du pyruvate à l'acétyl-CoA",
+O("Remets les étapes dans l'ordre.",["Pyruvate formé dans le cytosol (glycolyse)","Entrée par un transporteur spécifique","Pyruvate dans la matrice","Pyruvate déshydrogénase","Acétyl-CoA → cycle de Krebs"],"Le pyruvate traverse les membranes de la mitochondrie."),
+Q("Que fait la pyruvate déshydrogénase (complexe enzymatique) ?",["Elle décarboxyle (départ de CO₂) et oxyde (NAD⁺ → NADH,H⁺) le pyruvate","Elle phosphoryle le pyruvate","Elle le transforme en lactate"],"Décarboxylation oxydative."),
+Q("Cette étape fait-elle partie des 8 réactions du cycle ?",["Non : elle se fait avant ; irréversible, point de régulation important","Oui, c'est la 1ʳᵉ","Oui, la dernière"],"Étape préalable."),
+Q("Équation de la pyruvate dH ?",["Pyruvate + CoA-SH + NAD⁺ → acétyl-CoA + CO₂ + NADH,H⁺","Pyruvate + ATP → acétyl-CoA","Pyruvate + O₂ → CO₂"],"1 NADH,H⁺ par pyruvate."),
+Q("De quelle vitamine la pyruvate dH a-t-elle besoin ?",["B1 (thiamine), sous forme de TPP","C","D"],"TPP = forme active de la vitamine B1."),
+Q("Carence en B1 : que se passe-t-il ?",["Pyruvate dH bloquée → le pyruvate part en lactate → acidose lactique","Hyperglycémie","Rien"],"Fatigue, douleurs musculaires, troubles neurologiques."),
+Q("Qu'est-ce qui aggrave la carence en B1, et quel conseil ?",["L'alcool ; levure de bière, céréales complètes, avis médical","Le sucre ; manger moins","Le sport ; boire plus"],"Ajout de ta fiche.")
+]};
+LV.g12b={id:"g12b",t:"Fais tourner la roue",s:"Cycle de Krebs · les 8 réactions, bilan et régulation",ic:"🎡",items:[
+"Les 8 réactions",
+O("Remets les 8 intermédiaires dans l'ordre, à partir du citrate.",["Citrate","Isocitrate","α-cétoglutarate","Succinyl-CoA","Succinate","Fumarate","Malate","Oxaloacétate"],"L'oxaloacétate est régénéré et repart pour un tour."),
+Q("Quelle est la 1ʳᵉ réaction du cycle ?",["La condensation acétyl-CoA + oxaloacétate → citrate (citrate synthase)","Isocitrate → α-cétoglutarate","Malate → oxaloacétate"],"Irréversible."),
+A("Réactions 1 à 4 : relie chaque enzyme.",[["Citrate synthase","1 · Condensation (irréversible)"],["Aconitase (Fe²⁺)","2 · Isomérisation citrate → isocitrate"],["Isocitrate dH","3 · Décarboxylation oxydative (via l'oxalosuccinate)"],["α-cétoglutarate dH (complexe)","4 · Décarboxylation oxydative → succinyl-CoA"]],"Réactions 3 et 4 : NADH,H⁺ + CO₂."),
+A("Réactions 5 à 8 : relie chaque enzyme.",[["Succinate thiokinase","5 · Rupture du thioester → GTP"],["Succinate dH (Fe²⁺)","6 · Déshydrogénation → FADH₂"],["Fumarase","7 · Hydratation fumarate → malate"],["Malate dH","8 · Oxydation → oxaloacétate + NADH,H⁺"]],"Toutes réversibles."),
+Q("Quelles sont les 3 réactions irréversibles du cycle ?",["1, 3 et 4","2, 5 et 7","6, 7 et 8"],"Citrate synthase, isocitrate dH, α-cétoglutarate dH."),
+Q("À quelles réactions part un CO₂ ?",["3 et 4","1 et 2","7 et 8"],"Les deux décarboxylations oxydatives."),
+"Le bilan d'un tour",
+C("Combien de NADH,H⁺ par tour ?",3,"Réactions 3, 4 et 8."),
+C("Combien de FADH₂ par tour ?",1,"Réaction 6 (succinate dH)."),
+C("Combien de GTP par tour ?",1,"Réaction 5."),
+C("Combien de CO₂ par tour ?",2,"Les 2 carbones de l'acétyl repartent en CO₂, éliminé par les poumons."),
+C("Combien d'ATP rapporte un acétyl-CoA ?",12,"3 × 3 + 1 × 2 + 1 GTP = 12 ATP.","ATP"),
+Q("Le cycle de Krebs est-il possible sans O₂ ?",["Non, strictement aérobie : l'O₂ régénère NAD⁺ et FAD via les chaînes respiratoires","Oui","Oui, dans les hématies"],"L'O₂ n'intervient pas directement dans le cycle. La glycolyse, elle, peut être anaérobie."),
+"La régulation",
+Q("Qu'est-ce qui change selon la situation ?",["La provenance de l'acétyl-CoA (le cycle tourne tout le temps)","Le sens du cycle","Le nombre de réactions"],"Glucose ou acides gras."),
+Q("Que signifie un phosphate (Ⓟ) sur la pyruvate dH ?",["Il l'éteint (inactive)","Il l'allume","Il ne change rien"],"Phosphorylée = inactive."),
+Q("Après un repas, que fait l'insuline ?",["Elle active une phosphatase qui déphosphoryle la pyruvate dH : active, l'acétyl-CoA vient du glucose","Elle bloque le cycle","Elle phosphoryle la pyruvate dH"],"Si la cellule a beaucoup d'ATP, l'acétyl-CoA sert à fabriquer acides gras ou cholestérol : un excès de glucose favorise les lipides."),
+Q("En jeûne, que fait le glucagon ?",["Adénylate cyclase → AMPc → kinase qui phosphoryle la pyruvate dH : inactive ; l'acétyl-CoA vient des acides gras","Il active la pyruvate dH","Il stoppe la β-oxydation"],"Le glucose est gardé pour les cellules gluco-dépendantes (globules rouges, neurones)."),
+Q("Quelles hormones peuvent renforcer le glucagon ?",["Adrénaline, cortisol, hormones thyroïdiennes","Insuline et leptine","Ghréline"],"Situation de jeûne ou d'effort prolongé."),
+Q("En anaérobie (effort intense), pourquoi le cycle se bloque-t-il ?",["Les NADH,H⁺ s'accumulent et inhibent l'isocitrate dH, l'α-cétoglutarate dH et la pyruvate dH","Le glucagon le bloque","Plus d'oxaloacétate"],"Régulation allostérique : le pyruvate part en lactate.")
+]};
+LV.g13={id:"g13",t:"Le compteur d'ATP",s:"Récap · un glucose complètement dégradé",ic:"🔋",items:[
+"La clé",
+Q("La plupart des étapes fabriquent-elles directement de l'ATP ?",["Non : elles fabriquent des NADH,H⁺ et FADH₂, comme des tickets, échangés à la fin","Oui, toutes","Seulement Krebs"],"Échangés par la chaîne respiratoire et l'ATP synthase."),
+A("Relie chaque ticket à sa valeur en ATP.",[["1 NADH,H⁺","3 ATP"],["1 FADH₂","2 ATP"],["1 GTP","1 ATP"]],"Dans la membrane interne de la mitochondrie, avec de l'O₂."),
+"Le compteur",
+C("Glycolyse : ATP directs (−2 + 4) ?",2,"","ATP"),
+C("Glycolyse aérobie au total (ATP directs + 2 NADH,H⁺) ?",8,"2 + 2 × 3 = 8.","ATP"),
+C("Pyruvate → acétyl-CoA, pour les 2 pyruvates ?",6,"2 NADH,H⁺ × 3 = 6.","ATP"),
+C("Cycle de Krebs, 2 tours ?",24,"6 NADH,H⁺ × 3 + 2 FADH₂ × 2 + 2 GTP = 18 + 4 + 2.","ATP"),
+C("Total pour un glucose ?",38,"8 + 6 + 24 = 38 ATP.","ATP"),
+C("Combien de NADH,H⁺ en tout ?",10,"2 (glycolyse) + 2 (pyruvate dH) + 6 (Krebs)."),
+C("Combien de FADH₂ en tout ?",2,"Un par tour de cycle."),
+Q("Quelle est l'équation de la dégradation complète ?",["Glucose + 6 O₂ + 38 (ADP + Pi) → 6 CO₂ + 44 H₂O + 38 ATP","Glucose → 2 lactate + 2 ATP","Glucose + 2 O₂ → 2 CO₂"],"Fiche Krebs."),
+Q("L'anaérobie, comparée à la dégradation complète, est…",["Environ 19 fois moins rentable (38 ÷ 2)","4 fois moins","Aussi rentable"],"4 fois moins si on compare la glycolyse seule (8 contre 2).")
+]};
+
+/* ---------------- BESOINS EN GLUCIDES ---------------- */
+var B_IG=[["IG bas","≤ 55"],["IG moyen","56 à 69"],["IG élevé","≥ 70"]];
+var B_IGF=[["Fait baisser l'IG",""],["Fait monter l'IG",""]];
+var B_GLY=[["Normale",""],["Prédiabète",""],["Diabète",""],["Hypoglycémie",""]];
+var B_HH=[["Hyperglycémie",""],["Hypoglycémie",""]];
+LV.g14a={id:"g14a",t:"Repères, faim et satiété",s:"Fiche 6 · Besoins en glucides (parties 1 et 2)",ic:"🍽",items:[
+"1 Les repères utiles",
+Q("Pourquoi le glucose est-il un carburant particulier ?",["C'est le plus rapidement utilisable","C'est le plus calorique","Il ne passe pas par le foie"],"1 g = 4 kcal = 17 kJ."),
+A("Relie chaque organe à son usage du glucose.",[["Hématies","Glucose uniquement"],["Cerveau","Glucose en priorité, ≈ 100 à 130 g/j"]],"En jeûne prolongé, le cerveau utilise en partie les corps cétoniques."),
+Q("Glycémie à jeun normale ?",["0,70 à 1,10 g/L (3,9 à 6,1 mmol/L)","1,26 à 2 g/L","0,30 à 0,50 g/L"],"Maintenue par deux hormones."),
+A("Relie chaque hormone à son effet sur la glycémie.",[["Insuline","La fait baisser (stockage en glycogène)"],["Glucagon","La fait monter (glycogène du foie, néoglucogenèse)"]],"Régulation de la glycémie."),
+"2 Faim et satiété",
+Q("Qui intègre les signaux de faim et de satiété ?",["L'hypothalamus","Le pancréas","Le foie"],"Dans le cerveau."),
+A("Relie chaque signal à son origine et son rôle.",[["Ghréline","Estomac vide (fundus) : donne faim"],["Distension de l'estomac","Message par le nerf vague : satiété"],["CCK","Duodénum : arrête le repas"],["GLP-1, PYY","Iléon : ralentissent la vidange gastrique"],["Leptine","Tissu adipeux : long terme"]],"Avant le repas, court terme, long terme."),
+Q("Quand la ghréline augmente-t-elle ?",["À jeun et juste avant les repas ; elle chute après","Après le repas","La nuit seulement"],"Seule hormone digestive qui donne faim."),
+Q("Une baisse de la glycémie stimule la faim. Est-ce elle qui déclenche la ghréline ?",["Non","Oui","Seulement chez le diabétique"],"Ce sont deux signaux différents."),
+Q("La CCK est libérée surtout par…",["Les lipides et les protéines ; action brève (demi-vie 1 à 2 min)","Les glucides","L'eau"],"Elle réduit la taille du repas et ralentit la vidange gastrique."),
+Q("GLP-1 et PYY agissent…",["De quelques minutes à 1 ou 2 h après le repas","Avant le repas","Sur des semaines"],"Ils ralentissent la vidange gastrique."),
+Q("La leptine…",["Est proportionnelle à la masse grasse ; si on perd du poids, elle diminue et la faim augmente","Augmente quand on maigrit","Donne faim"],"L'estomac en produit aussi un peu."),
+O("À calories égales, classe du plus rassasiant au moins rassasiant.",["Protéines","Glucides","Lipides"],"Les glucides participent à la satiété mais ne sont pas les plus rassasiants."),
+Q("Fibres et sucres liquides : effet sur la satiété ?",["Les fibres l'augmentent ; les sucres liquides (sodas, jus) rassasient très peu","Les deux l'augmentent","Les deux la diminuent"],"Volume et viscosité des fibres."),
+]};
+LV.g14i={id:"g14i",t:"Index et charge glycémiques",s:"Fiche 6 · Besoins en glucides (partie 3)",ic:"📈",items:[
+"3 Index et charge glycémiques",
+Q("L'index glycémique (IG) classe les aliments selon…",["La hausse de glycémie qu'ils provoquent, comparée au glucose (IG = 100)","Leur teneur en sucre","Leurs calories"],"Le pain blanc peut servir de référence, mais le résultat est exprimé par rapport au glucose."),
+Q("Méthode de référence (norme ISO) ?",["Portion de 50 g de glucides disponibles, glycémie suivie 2 h, au moins 10 sujets sains","100 g d'aliment, 24 h, 1 sujet","50 g de sucre, 10 min"],"On compare l'aire sous la courbe."),
+Q("Formule de l'IG ?",["Aire de l'aliment ÷ aire du glucose × 100","Glucides × 4","IG = CG × 100"],"Aire sous la courbe."),
+T(B_IG,"Légumineuses (lentilles, pois chiches)",0,""),
+T(B_IG,"Produits laitiers",0,""),
+T(B_IG,"Pâtes al dente",0,""),
+T(B_IG,"Riz blanc",1,""),
+T(B_IG,"Miel",1,""),
+T(B_IG,"Pommes de terre cuites avec la peau",1,""),
+T(B_IG,"Pain blanc",2,""),
+T(B_IG,"Purée",2,""),
+T(B_IG,"Céréales soufflées",2,""),
+T(B_IGF,"Fibres solubles (gel visqueux)",0,"Elles ralentissent la vidange de l'estomac."),
+T(B_IGF,"Cuisson longue",1,"L'amidon est gélatinisé, plus vite digéré."),
+T(B_IGF,"Acidité (vinaigre, citron)",0,"Ralentit la vidange."),
+T(B_IGF,"Broyage, mixage, raffinage",1,"Purée, farine blanche, jus."),
+T(B_IGF,"Amidon rétrogradé (pâtes cuites puis refroidies)",0,""),
+T(B_IGF,"Amidon riche en amylopectine (riz gluant)",1,""),
+T(B_IGF,"Maturité du fruit",1,"L'amidon devient sucres."),
+T(B_IGF,"Protéines",0,"Elles stimulent l'insuline."),
+Q("Quelles sont les limites de l'IG ?",["Il ne tient pas compte de la quantité, il est mesuré sur un aliment seul et varie selon les personnes","Il n'existe pas pour les fruits","Aucune"],"D'où la charge glycémique."),
+Q("Formule de la charge glycémique (CG) ?",["IG × glucides disponibles de la portion (g) ÷ 100","IG ÷ 100","Glucides × 4"],"Elle combine qualité et quantité."),
+C("Lentilles : IG 29, 19 g de glucides. CG ?",5.5,"29 × 19 ÷ 100 = 5,5 : faible.","",0.1),
+C("Sucre, 2 morceaux de 5 g (IG 68). CG ?",6.8,"68 × 10 ÷ 100 ≈ 7 : faible.","",0.3),
+C("Pastèque 120 g : IG 72, 6 g de glucides. CG ?",4.3,"≈ 4 : IG élevé mais CG faible.","",0.35),
+A("Relie chaque CG à sa catégorie.",[["≤ 10","CG faible"],["11 à 19","CG modérée"],["≥ 20","CG élevée"]],"Seuils de la fiche.")
+]};
+LV.g14b={id:"g14b",t:"Recommandations et glycémie",s:"Fiche 6 · Besoins en glucides (parties 4 et 5)",ic:"🍽",items:[
+"4 Besoins et recommandations",
+Q("Glucides (Anses) ?",["40 à 55 % de l'AET (au minimum 40 %), en privilégiant les glucides complexes peu raffinés","10 % de l'AET","70 % de l'AET"],"Féculents complets, légumineuses."),
+A("Pour 2 000 kcal, relie.",[["40 à 55 %","800 à 1 100 kcal"],["En grammes","200 à 275 g/j"]],"1 g = 4 kcal."),
+C("Pour 2 000 kcal et 50 % de glucides, combien de grammes ?",250,"1 000 kcal ÷ 4 = 250 g.","g"),
+C("Fibres : apport satisfaisant (g/j) ?",30,"","g"),
+C("Besoin minimal en glucides (g/j) ?",130,"Pour couvrir les besoins en glucose du cerveau.","g",5),
+Q("Sucres totaux (Anses), adulte ?",["≤ 100 g/j, hors lactose et galactose : une limite maximale, pas un objectif","≥ 100 g/j","≤ 10 g/j"],"Elle inclut les sucres naturels et ajoutés."),
+Q("Sucres libres (OMS) ?",["< 10 % de l'AET (≈ 50 g pour 2 000 kcal), idéalement < 5 %","< 50 % de l'AET","Aucune limite"],"Recommandation OMS."),
+Q("Boissons sucrées ?",["Moins d'un verre par jour","3 verres maximum","Aucune limite"],"Les sucres liquides favorisent la prise de poids."),
+C("Au-delà de combien de grammes de fructose par jour les triglycérides augmentent-ils ?",50,"Les apports élevés en sucres favorisent aussi la stéatose hépatique et les caries.","g"),
+A("Relie chaque terme à ce qu'il regroupe.",[["Sucres totaux","Tous les oses et diholosides de l'aliment, naturels ou ajoutés"],["Sucres ajoutés","Ajoutés lors de la fabrication ou de la préparation"],["Sucres libres (OMS)","Ajoutés + ceux du miel, des sirops et des jus de fruits"]],"Pas ceux des fruits entiers, des légumes et du lait."),
+O("Classe ces aliments du plus riche au moins riche en glucides (g/100 g, Ciqual).",["Farine de blé","Fruits séchés","Pain","Riz cuit","Pomme de terre","Lait"],"76,5 · 61,3 · 55 · 31,7 · 17,2 · 5. Pâtes cuites 31,4 ; yaourt nature 4,3 ; viande ≈ 0."),
+"5 Excès ou manque",
+T(B_GLY,"0,90 g/L à jeun",0,"0,70 à 1,10."),
+T(B_GLY,"1,18 g/L à jeun",1,"1,10 à 1,25 : hyperglycémie modérée à jeun."),
+T(B_GLY,"1,30 g/L à jeun, à 2 reprises",2,"≥ 1,26 à 2 reprises (ou ≥ 2 g/L à tout moment avec symptômes)."),
+T(B_GLY,"0,60 g/L chez un diabétique traité",3,"< 0,70."),
+Q("Chez le non-diabétique, on parle d'hypoglycémie en dessous de…",["≈ 0,50 à 0,55 g/L, avec des symptômes","1 g/L","0,70 g/L"],"Chez le diabétique traité : < 0,70."),
+Q("Trop de glucides chez un non-diabétique : hyperglycémie durable ?",["Non, l'insuline ramène la glycémie ; mais prise de poids, ↑ triglycérides, stéatose, caries, risque de DT2","Oui, toujours","Non, et aucune conséquence"],"Le fructose surtout pour les triglycérides."),
+O("Pas assez de glucides : remets les solutions du corps dans l'ordre.",["Glycogène du foie (≈ 24 h)","Néoglucogenèse","Cétogenèse"],"La glycémie reste normale chez la personne en bonne santé."),
+Q("À partir de quoi se fait la néoglucogenèse ?",["Acides aminés, lactate, glycérol","Acides gras uniquement","Cellulose"],"Les corps cétoniques remplacent en partie le glucose pour le cerveau."),
+Q("Conséquences d'un manque de glucides ?",["Fatigue, maux de tête, fonte musculaire, cétose (haleine), constipation","Prise de poids","Hyperglycémie"],"Manque de fibres → constipation."),
+T(B_HH,"Soif intense, urines abondantes",0,""),
+T(B_HH,"Sueurs, tremblements, palpitations",1,""),
+T(B_HH,"Amaigrissement (diabète de type 1)",0,""),
+T(B_HH,"Confusion, troubles visuels, malaise",1,"Le cerveau manque de glucose."),
+T(B_HH,"Cause : dose d'insuline trop forte, repas sauté, effort sans apport, alcool",1,""),
+T(B_HH,"Cause : diabète, corticoïdes, infection",0,""),
+Q("Complications de l'hyperglycémie ?",["Chroniques : reins, yeux, nerfs, cœur, cerveau, artères ; aiguës : acidocétose, coma","Aucune","Seulement des caries"],"Petits et gros vaisseaux."),
+Q("Causes plus rares d'hypoglycémie ?",["Insuffisance surrénale (Addison), insulinome, certains médicaments (quinine)","Trop de fibres","Manque de sommeil"],"Hors diabétique traité."),
+Q("Resucrage d'une hypoglycémie ?",["15 g de sucres rapides (3 morceaux, ou 150 mL de jus ou soda), contrôle 15 min après, collation si le repas est loin","Un repas complet","De l'eau"],"Sinon : convulsions, coma, voire décès.")
+]};
+
+/* ---------------- BESOINS EN FIBRES ---------------- */
+var B_FIB=[["Fibre soluble","gel visqueux, très fermentée"],["Fibre insoluble","retient l'eau, peu fermentée"]];
+var B_FX=[["Trop de fibres",""],["Pas assez de fibres",""]];
+LV.g15a={id:"g15a",t:"Les rôles des fibres",s:"Fiche 7 · Besoins en fibres (parties 1 et 2)",ic:"🥦",items:[
+"1 Définition et types",
+Q("Les fibres alimentaires sont…",["Des polymères glucidiques non digérés dans l'intestin grêle, plus la lignine","Des protéines végétales","Des glucides absorbés lentement"],"Elles arrivent intactes au côlon."),
+Q("De quelles propriétés dépendent leurs effets ?",["Viscosité, fermentescibilité et, dans une moindre mesure, solubilité","Couleur et goût","Calories"],"Trois propriétés."),
+T(B_FIB,"Pectines",0,""),T(B_FIB,"Bêta-glucanes",0,""),T(B_FIB,"Gommes, mucilages (psyllium)",0,""),T(B_FIB,"Inuline",0,""),
+T(B_FIB,"Cellulose",1,""),T(B_FIB,"Hémicelluloses",1,""),T(B_FIB,"Lignine",1,""),
+A("Relie chaque type à ses sources.",[["Fibres solubles","Fruits (pomme, agrumes), avoine, orge, légumineuses, légumes"],["Fibres insolubles","Son de blé, céréales complètes, peau des fruits"]],"Varier les sources."),
+A("Relie chaque type à ses effets.",[["Fibres solubles","Glycémie et cholestérol (viscosité), production d'AGCC"],["Fibres insolubles","Volume des selles et transit"]],"Tableau de ta fiche."),
+"2 Les rôles",
+Q("Comment les fibres visqueuses régulent-elles la glycémie ?",["Vidange gastrique et absorption ralenties → glycémie et pic d'insuline ↓","Elles bloquent l'insuline","Elles apportent du glucose"],"IG ↓."),
+Q("Les fibres de céréales…",["Diminuent le risque de diabète de type 2","Augmentent la glycémie","N'ont aucun effet"],"Rôle préventif."),
+Q("Effet des fibres insolubles sur le transit ?",["Elles retiennent l'eau : selles plus volumineuses, plus molles, plus régulières","Elles constipent","Aucun"],"Ex. : son de blé, son d'avoine, pruneaux (+ sorbitol, laxatif)."),
+Q("Satiété et poids ?",["Volume ↑ et vidange ralentie : rassasié plus longtemps, peu d'énergie","Elles font grossir","Elles donnent faim"],"Densité énergétique faible."),
+C("Combien de kcal apporte 1 g de fibres (après fermentation) ?",2,"≈ 2 kcal/g, contre 4 pour les glucides digestibles.","kcal"),
+O("Remets dans l'ordre comment les fibres visqueuses font baisser le LDL.",["Elles piègent les acides biliaires","Les acides biliaires sont éliminés dans les selles","Le foie utilise son cholestérol pour en refabriquer","Le foie capte plus de LDL dans le sang","Le LDL-cholestérol diminue"],"Elles limitent aussi un peu l'absorption du cholestérol."),
+Q("Que produit la fermentation des fibres (surtout solubles) ?",["Des AGCC et des gaz (H₂, CO₂, CH₄)","Du glucose","Des protéines"],"Par le microbiote."),
+A("Relie chaque AGCC à son devenir.",[["Butyrate","Principale source d'énergie des cellules du côlon"],["Propionate","Va au foie (néoglucogenèse)"],["Acétate","Utilisé par les autres tissus"]],"AGCC = acides gras à chaîne courte."),
+Q("Autres effets de la fermentation ?",["Anti-inflammatoire, côlon acidifié ; l'inuline est prébiotique","Elle augmente le cholestérol","Elle détruit le microbiote"],"Prébiotique : nourrit les « bonnes » bactéries."),
+Q("Pourquoi les fibres diminuent-elles le risque de cancer colorectal ?",["Toxiques dilués (selles volumineuses), contact plus court (transit rapide), butyrate protecteur","Elles tuent les cellules cancéreuses","Elles bloquent les vitamines"],"Trois raisons.")
+]};
+LV.g15b={id:"g15b",t:"Besoins et sources",s:"Fiche 7 · Besoins en fibres (parties 3 et 4)",ic:"🥦",items:[
+"3 Besoins et sources",
+C("Apport satisfaisant chez l'adulte, hommes et femmes (g/j) ?",30,"Les Français en consomment moins.","g"),
+A("Relie chaque âge à son apport satisfaisant.",[["4 à 6 ans","14 g/j"],["7 à 10 ans","16 g/j"],["11 à 14 ans","19 g/j"],["15 à 17 ans","21 g/j"]],"Valeurs Anses."),
+Q("Femmes enceintes ou allaitantes, femmes ménopausées, hommes de plus de 65 ans ?",["25 à 30 g/j","10 g/j","50 g/j"],"Tableau de ta fiche."),
+Q("Pourquoi parle-t-on d'AS et pas de RNP ?",["Pas assez de données pour définir un besoin moyen","Les fibres ne sont pas utiles","C'est la même chose"],"AS = apport satisfaisant."),
+Q("Repère PNNS pour les fruits et légumes ?",["Au moins 5 par jour (portions de 80 à 100 g), en gardant la peau si possible","1 par jour","10 par repas"],"Les jus de fruits contiennent peu de fibres."),
+A("Relie chaque repère PNNS à sa fréquence.",[["Légumes secs","Au moins 2 fois par semaine"],["Féculent complet","Au moins un par jour"],["Fruits à coque","Une petite poignée par jour"]],"Les céréales raffinées ont perdu leur enveloppe riche en fibres."),
+O("Classe du plus riche au moins riche en fibres (g/100 g).",["Son de blé","Graines de chia","Pois cassés secs","Amandes","Flocons d'avoine","Pain complet","Fruits crus"],"42,9 · 34,4 · 25,5 · 12,5 · 11,2 · 7,3 · 2."),
+A("Relie chaque aliment à sa teneur en fibres (g/100 g).",[["Légumes secs cuits","≈ 9"],["Artichauts cuits","8,3"],["Figues sèches","8,2"],["Pruneaux","5,1"],["Légumes cuits","2,6"]],"Ciqual."),
+Q("Les salades et endives sont…",["Pauvres en fibres (0,5 à 1 g) ; leur intérêt est le volume pour peu de calories","Très riches en fibres","Sans intérêt"],"Piège fréquent."),
+"4 Excès et manque",
+T(B_FX,"Ballonnements, gaz, douleurs abdominales",0,""),
+T(B_FX,"Moins bonne absorption du fer, zinc, calcium, cuivre",0,"À cause de l'acide phytique (phytates)."),
+T(B_FX,"Constipation, hémorroïdes, diverticules",1,""),
+T(B_FX,"Moins de satiété, grignotage, prise de poids",1,""),
+T(B_FX,"Risque accru de DT2, hypercholestérolémie, cancer colorectal",1,""),
+T(B_FX,"Parfois diarrhée",0,""),
+Q("Comment augmenter les fibres sans inconfort ?",["Progressivement, en commençant par des fibres cuites et en petite quantité, et en buvant suffisamment","Tout d'un coup","En supprimant l'eau"],"Les fibres insolubles ont besoin d'eau pour agir. Varier les sources.")
+]};
+
+var GLU_STATIONS=[
+ {id:"labo",icon:"hex",name:"Le Labo des oses",sub:"Biochimie structurale",desc:"Classification, oligosides, polyholosides, dérivés et propriétés : fiches 1 à 5.",levels:[LV.g1a,LV.g1b,LV.build,LV.g2,LV.g3a,LV.g3b,LV.g4,LV.g5a,LV.g5b]},
+ {id:"tube",icon:"tube",name:"Le Tube digestif",sub:"Digestion et absorption",desc:"De la bouche à la veine porte : enzymes, transporteurs et distribution du glucose.",levels:[LV.voyage,LV.g6a,LV.g6b]},
+ {id:"cell",icon:"cell",name:"La Cellule",sub:"Métabolisme",desc:"La glycolyse et ses bretelles : pentoses phosphates, fructose, galactose.",levels:[LV.g7a,LV.g7b,LV.g7c,LV.g8,LV.g9,LV.g10,LV.g11]},
+ {id:"mito",icon:"mito",name:"La Mitochondrie",sub:"Krebs et bilan énergétique",desc:"Le cycle de Krebs, sa régulation et le grand compte : 38 ATP.",levels:[LV.g12a,LV.g12b,LV.g13]},
+ {id:"assiette",icon:"plate",name:"L'Assiette",sub:"Besoins en glucides et fibres",desc:"Faim, IG et CG, recommandations, glycémie, rôles et besoins en fibres.",levels:[LV.g14a,LV.g14i,LV.g14b,LV.g15a,LV.g15b]},
+ {id:"defi",icon:"star",name:"Défi final",sub:"Révision express",desc:"20 questions tirées de toutes les fiches glucides. Les notions de ton carnet passent en priorité.",levels:[{id:"gx",t:"Révision express",s:"Toutes les fiches glucides",ic:"⏱",defi:"glu",n:20}]},
+ {id:"cab",icon:"lock",name:"Le Cabinet",sub:"Plus tard",locked:true}
+];
+
+var WORLDS={
+ chi:{name:"Prologue · Bases de chimie",eyebrow:"Prologue",title:"Les briques de la matière",sub:"Cinq fiches de chimie à maîtriser avant d'attaquer les nutriments.",stations:CHI_STATIONS},
+ glu:{name:"Glucides",eyebrow:"Famille 1 · Glucides",title:"Le voyage du glucose",sub:"De la molécule à l'assiette : structure, digestion, métabolisme, énergie et besoins.",stations:GLU_STATIONS}
+};
+
+
+</script>
+<script>
+(function(){
+/* ---------- state ---------- */
+var KEY="metabolia-v2";
+var S={xp:0,stars:{},carnet:[]};
+try{var raw=localStorage.getItem(KEY); if(raw){var p=JSON.parse(raw); if(p&&typeof p==="object") S=Object.assign(S,p);}}catch(e){}
+S.carnet=(S.carnet||[]).filter(function(c){return c&&c.key});
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function $(s,r){return (r||document).querySelector(s)}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a}
+function fr(n){return String(n).replace(".",",")}
+var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* index des niveaux et des défis */
+var LEVELS={};
+Object.keys(WORLDS).forEach(function(w){WORLDS[w].stations.forEach(function(st){(st.levels||[]).forEach(function(l){
+  l.world=w;l.station=st;LEVELS[l.id]=l;
+  if(l.items){var sec="",its=[],secs=[];l.items.forEach(function(it){if(typeof it==="string"){sec=it;secs.push(it);return;}it.sec=sec;its.push(it);});its.forEach(function(it,i){it.key=l.id+"#"+i;it.ref=l.s+(it.sec?" · "+it.sec:"");});l.items=its;l.secs=secs;}
+});});});
+
+function refreshHUD(){
+  $$(".xpN").forEach(function(e){e.textContent=S.xp});
+  $$(".lvlN").forEach(function(e){e.textContent=Math.floor(S.xp/100)+1});
+  $$(".carnet-btn .dot").forEach(function(d){d.hidden=!S.carnet.length;d.textContent=S.carnet.length});
+}
+function addMiss(key,q,a,ref){if(S.carnet.some(function(c){return c.key===key}))return;S.carnet.unshift({key:key,q:q,a:a,ref:ref});S.carnet=S.carnet.slice(0,60);save();}
+function clearMiss(key){var n=S.carnet.length;S.carnet=S.carnet.filter(function(c){return c.key!==key});if(n!==S.carnet.length)save();}
+
+/* ---------- screens ---------- */
+var screens=["title","hub","world","game"],curWorld="glu",selStation=null;
+function show(id){screens.forEach(function(s){$("#"+s).hidden=(s!==id)});window.scrollTo(0,0);refreshHUD();
+  if(id==="title")startFx();else stopFx();
+  if(id==="hub")renderHub();if(id==="world")renderWorld();}
+document.addEventListener("click",function(e){
+  var g=e.target.closest("[data-go]");if(g)show(g.getAttribute("data-go"));
+  var w=e.target.closest("[data-world]");if(w){curWorld=w.getAttribute("data-world");selStation=null;show("world");}
+  if(e.target.closest("[data-carnet]"))openCarnet();
+});
+$("#startBtn").onclick=function(){show("hub")};
+
+/* ---------- title fx ---------- */
+var cv=$("#bgfx"),cx=cv.getContext("2d"),parts=[],raf=0;
+function sizeFx(){var r=cv.getBoundingClientRect();var d=Math.min(2,window.devicePixelRatio||1);cv.width=r.width*d;cv.height=r.height*d;cx.setTransform(d,0,0,d,0,0);}
+function seedFx(){var r=cv.getBoundingClientRect();parts=[];for(var i=0;i<26;i++)parts.push({x:Math.random()*r.width,y:Math.random()*r.height,s:14+Math.random()*34,a:Math.random()*6.28,va:(Math.random()-.5)*.004,vy:-.12-Math.random()*.25,n:Math.random()<.3?5:6,c:Math.random()<.6?"255,181,71":"174,141,255",o:.12+Math.random()*.22});}
+function poly(x,y,s,a,n){cx.beginPath();for(var i=0;i<n;i++){var t=a+i*2*Math.PI/n;var px=x+s*Math.cos(t),py=y+s*Math.sin(t);i?cx.lineTo(px,py):cx.moveTo(px,py);}cx.closePath();}
+function drawFx(){var r=cv.getBoundingClientRect();cx.clearRect(0,0,r.width,r.height);
+  parts.forEach(function(p){poly(p.x,p.y,p.s,p.a,p.n);cx.strokeStyle="rgba("+p.c+","+p.o+")";cx.lineWidth=2;cx.stroke();
+    var ox=p.x+p.s*Math.cos(p.a),oy=p.y+p.s*Math.sin(p.a);cx.beginPath();cx.arc(ox,oy,3,0,6.28);cx.fillStyle="rgba(174,141,255,"+(p.o+.1)+")";cx.fill();
+    if(!reduce){p.y+=p.vy;p.a+=p.va;if(p.y<-60){p.y=r.height+60;p.x=Math.random()*r.width;}}});
+  if(!reduce)raf=requestAnimationFrame(drawFx);}
+function startFx(){cancelAnimationFrame(raf);sizeFx();if(!parts.length)seedFx();drawFx();}
+function stopFx(){cancelAnimationFrame(raf);}
+window.addEventListener("resize",function(){if(!$("#title").hidden){sizeFx();seedFx();if(reduce)drawFx();}});
+
+/* ---------- hub ---------- */
+var FAM=[
+ {id:"chi",name:"Prologue · Chimie",sub:"5 fiches : atome, liaisons, molécules, réactions, pH",c:"var(--lilac)",on:true,tag:"Commence ici",g:"atom"},
+ {id:"glu",name:"Glucides",sub:"15 fiches : oses, digestion, glycolyse, Krebs, besoins",c:"var(--amber)",on:true,tag:"Jouable",g:"hex"},
+ {id:"lip",name:"Lipides",sub:"Acides gras, triglycérides, lipoprotéines",c:"var(--coral)",tag:"Ajoute tes fiches",g:"chain"},
+ {id:"pro",name:"Protéines",sub:"Acides aminés, liaison peptidique, enzymes",c:"var(--sky)",tag:"Ajoute tes fiches",g:"beads"},
+ {id:"eau",name:"Eau & minéraux",sub:"Compartiments hydriques, électrolytes",c:"var(--teal)",tag:"1 fiche prête",g:"drop"}
+];
+function glyph(t,c){
+  var s='<svg class="glyph" viewBox="0 0 64 64" aria-hidden="true">';
+  if(t==="hex")s+='<polygon points="32,6 54,19 54,45 32,58 10,45 10,19" fill="none" stroke="'+c+'" stroke-width="4"/><circle cx="54" cy="19" r="5" fill="var(--violet)"/><text x="32" y="38" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="'+c+'">C₆</text>';
+  if(t==="chain")s+='<path d="M8 40 L18 26 L28 40 L38 26 L48 40 L56 30" fill="none" stroke="'+c+'" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="40" r="5" fill="'+c+'"/>';
+  if(t==="beads")s+='<circle cx="14" cy="38" r="7" fill="none" stroke="'+c+'" stroke-width="4"/><circle cx="30" cy="26" r="7" fill="none" stroke="'+c+'" stroke-width="4"/><circle cx="46" cy="38" r="7" fill="none" stroke="'+c+'" stroke-width="4"/><path d="M19 33 L25 30 M35 30 L41 33" stroke="'+c+'" stroke-width="4"/>';
+  if(t==="drop")s+='<path d="M32 8 C42 22 50 32 50 41 a18 18 0 0 1 -36 0 C14 32 22 22 32 8Z" fill="none" stroke="'+c+'" stroke-width="4"/><text x="32" y="46" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="'+c+'">Na⁺</text>';
+  if(t==="atom")s+='<ellipse cx="32" cy="32" rx="24" ry="9" fill="none" stroke="'+c+'" stroke-width="3"/><ellipse cx="32" cy="32" rx="24" ry="9" fill="none" stroke="'+c+'" stroke-width="3" transform="rotate(60 32 32)"/><ellipse cx="32" cy="32" rx="24" ry="9" fill="none" stroke="'+c+'" stroke-width="3" transform="rotate(-60 32 32)"/><circle cx="32" cy="32" r="4" fill="'+c+'"/>';
+  return s+'</svg>';
+}
+function worldLevels(w){var a=[];WORLDS[w].stations.forEach(function(st){(st.levels||[]).forEach(function(l){a.push(l)})});return a}
+function worldPct(w){var L=worldLevels(w),got=0;L.forEach(function(l){got+=S.stars[l.id]||0});return Math.round(got/(L.length*3)*100)}
+function renderHub(){
+  $("#families").innerHTML=FAM.map(function(f){
+    var pct=f.on?worldPct(f.id):0;
+    return '<button class="fam '+(f.on?"active":"locked")+'" style="--c:'+f.c+'" '+(f.on?'data-world="'+f.id+'"':'aria-disabled="true"')+'><span class="tag">'+f.tag+'</span>'+glyph(f.g,f.c)+'<h3>'+f.name+'</h3><p class="sub">'+f.sub+'</p><div class="meta">'+(f.on?'<div class="meter"><i style="width:'+pct+'%"></i></div><span>'+pct+' %</span>':'<span>Bientôt</span>')+'</div></button>';
+  }).join("");
+}
+
+/* ---------- world map ---------- */
+var ICOL={atom:"var(--lilac)",bond:"var(--lilac)",mol:"var(--lilac)",react:"var(--lilac)",ph:"var(--teal)",hex:"var(--amber)",tube:"var(--coral)",cell:"var(--sky)",mito:"var(--ok)",plate:"var(--teal)",star:"var(--amber)"};
+function nodeIcon(t){var c=ICOL[t]||"var(--dim)";
+  if(t==="hex")return '<polygon points="0,-14 12,-7 12,7 0,14 -12,7 -12,-7" fill="none" stroke="'+c+'" stroke-width="3"/>';
+  if(t==="tube")return '<path d="M-8,-12 C-8,-2 10,-6 8,4 S-6,8 -4,14" fill="none" stroke="'+c+'" stroke-width="4" stroke-linecap="round"/>';
+  if(t==="cell")return '<circle r="13" fill="none" stroke="'+c+'" stroke-width="3"/><circle cx="3" cy="-2" r="4.5" fill="'+c+'"/>';
+  if(t==="mito")return '<ellipse rx="15" ry="9" fill="none" stroke="'+c+'" stroke-width="3"/><path d="M-10,0 l4,-5 l4,10 l4,-10 l4,10 l3,-5" fill="none" stroke="'+c+'" stroke-width="2"/>';
+  if(t==="star")return '<polygon points="0,-14 4,-4 14,-4 6,3 9,13 0,7 -9,13 -6,3 -14,-4 -4,-4" fill="'+c+'"/>';
+  if(t==="atom")return '<ellipse rx="14" ry="5" fill="none" stroke="'+c+'" stroke-width="2.4"/><ellipse rx="14" ry="5" fill="none" stroke="'+c+'" stroke-width="2.4" transform="rotate(60)"/><ellipse rx="14" ry="5" fill="none" stroke="'+c+'" stroke-width="2.4" transform="rotate(-60)"/><circle r="3" fill="'+c+'"/>';
+  if(t==="bond")return '<circle cx="-8" r="6" fill="none" stroke="'+c+'" stroke-width="3"/><circle cx="8" r="6" fill="none" stroke="'+c+'" stroke-width="3"/><line x1="-2" x2="2" stroke="'+c+'" stroke-width="3"/>';
+  if(t==="mol")return '<circle cx="0" cy="-8" r="4.5" fill="'+c+'"/><circle cx="-9" cy="7" r="4.5" fill="'+c+'"/><circle cx="9" cy="7" r="4.5" fill="'+c+'"/><path d="M0,-8 L-9,7 M0,-8 L9,7" stroke="'+c+'" stroke-width="2.4"/>';
+  if(t==="react")return '<path d="M-5,-13 h10 M-3,-13 v8 l-9,15 a2,2 0 0 0 2,3 h20 a2,2 0 0 0 2,-3 l-9,-15 v-8" fill="none" stroke="'+c+'" stroke-width="2.6" stroke-linejoin="round"/><path d="M-8,6 h16" stroke="'+c+'" stroke-width="2.4"/>';
+  if(t==="ph")return '<path d="M0,-14 C6,-5 10,0 10,5 a10,10 0 0 1 -20,0 C-10,0 -6,-5 0,-14Z" fill="none" stroke="'+c+'" stroke-width="3"/><text y="9" text-anchor="middle" font-family="JetBrains Mono" font-size="8.5" fill="'+c+'">pH</text>';
+  if(t==="plate")return '<circle r="13" fill="none" stroke="'+c+'" stroke-width="3"/><circle r="6.5" fill="none" stroke="'+c+'" stroke-width="2"/>';
+  return '<rect x="-9" y="-3" width="18" height="14" rx="3" fill="var(--dim)"/><path d="M-5,-3 v-4 a5,5 0 0 1 10,0 v4" fill="none" stroke="var(--dim)" stroke-width="3"/>';
+}
+function stationStars(st){var got=0,max=0;(st.levels||[]).forEach(function(l){max+=3;got+=S.stars[l.id]||0});return [got,max]}
+function renderWorld(){
+  var W=WORLDS[curWorld];$("#wEyebrow").textContent=W.eyebrow;$("#wTitle").textContent=W.title;$("#wSub").textContent=W.sub;
+  var st=W.stations,n=st.length,gap=108,H=70+(n-1)*gap+80;
+  if(!selStation)selStation=st[0].id;
+  var pts=st.map(function(s,i){return [i%2?370:150,70+i*gap]});
+  var p="M"+pts[0][0]+","+pts[0][1];
+  for(var i=1;i<n;i++)p+=" C"+pts[i-1][0]+","+(pts[i-1][1]+gap*.55)+" "+pts[i][0]+","+(pts[i][1]-gap*.55)+" "+pts[i][0]+","+pts[i][1];
+  var svg='<defs><radialGradient id="g1"><stop offset="0" stop-color="#ffb547" stop-opacity=".9"/><stop offset="1" stop-color="#ffb547" stop-opacity="0"/></radialGradient><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#3d3366"/></pattern></defs>'+
+    '<rect width="520" height="'+H+'" fill="url(#dots)"/><path d="'+p+'" fill="none" stroke="#3d3366" stroke-width="16" stroke-linecap="round"/><path id="trail" d="'+p+'" fill="none" stroke="#ffb547" stroke-width="3" stroke-dasharray="2 12" stroke-linecap="round" opacity=".8"/>';
+  st.forEach(function(s,i){
+    var x=pts[i][0],y=pts[i][1],ss=stationStars(s),right=x<260,lx=right?40:-40,anchor=right?"start":"end",sel=s.id===selStation;
+    svg+='<g class="node'+(s.locked?" locked":"")+'" data-st="'+s.id+'" transform="translate('+x+','+y+')" tabindex="0" role="button" aria-label="'+esc(s.name)+'">'+
+      '<circle r="40" fill="url(#g1)" opacity="'+(sel?.55:.16)+'"/><circle r="28" fill="#221a3d" stroke="'+(s.locked?"#3d3366":(sel?"#ffb547":"#5a4d8f"))+'" stroke-width="3"/>'+nodeIcon(s.icon)+
+      '<text class="node-label" x="'+lx+'" y="-2" text-anchor="'+anchor+'">'+esc(s.name)+'</text>'+
+      '<text class="node-sub" x="'+lx+'" y="16" text-anchor="'+anchor+'">'+esc(s.sub)+(ss[1]?' · ★ '+ss[0]+'/'+ss[1]:'')+'</text></g>';
+  });
+  var m=$("#map");m.setAttribute("viewBox","0 0 520 "+H);m.innerHTML=svg;
+  $$(".node",m).forEach(function(nd){
+    function pick(){var s=st.find(function(x){return x.id===nd.dataset.st});if(s.locked){openLocked();return;}selStation=s.id;renderWorld();if(window.innerWidth<=820)$("#panel").scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"});}
+    nd.addEventListener("click",pick);nd.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
+  });
+  if(!reduce){var t=$("#trail",m),o=0;(function anim(){if($("#world").hidden||!t.isConnected)return;o-=.4;t.setAttribute("stroke-dashoffset",o);requestAnimationFrame(anim)})();}
+  renderPanel();
+}
+function levelKinds(l){
+  if(l.game==="build")return "Assemblage · 5 molécules";if(l.game==="voyage")return "Parcours · 7 étapes";if(l.defi)return l.n+" questions mélangées";
+  var names={qcm:"QCM",calc:"calcul",tri:"tri",assoc:"association",ordre:"remise en ordre"},seen=[];
+  l.items.forEach(function(it){if(seen.indexOf(names[it.k])<0)seen.push(names[it.k])});
+  return l.items.length+" défis · "+(l.secs.length)+" section"+(l.secs.length>1?"s":"")+" · "+seen.join(", ");
+}
+function renderPanel(){
+  var W=WORLDS[curWorld],st=W.stations.find(function(s){return s.id===selStation}),idx=W.stations.indexOf(st)+1;
+  $("#panel").innerHTML='<div class="kicker">Étape '+idx+' · '+esc(st.sub)+'</div><h3>'+esc(st.name)+'</h3><p class="desc">'+esc(st.desc)+'</p><div class="levels">'+
+   st.levels.map(function(l){var n=S.stars[l.id]||0,stars="";for(var i=0;i<3;i++)stars+='<span class="'+(i<n?"on":"")+'">★</span>';
+     return '<button class="lvl" data-lvl="'+l.id+'"><span class="ic" aria-hidden="true">'+l.ic+'</span><span><span class="t">'+esc(l.t)+'</span><br><span class="s">'+esc(levelKinds(l))+'</span>'+(l.secs&&l.secs.length?'<span class="secs">'+l.secs.map(esc).join(" · ")+'</span>':'')+'</span><span class="row" style="gap:8px;justify-content:flex-end"><span class="stars">'+stars+'</span><span class="pill">Jouer</span></span></button>';
+   }).join("")+'</div>';
+  $$("[data-lvl]",$("#panel")).forEach(function(b){b.onclick=function(){startGame(b.dataset.lvl)}});
+}
+
+/* ---------- modal ---------- */
+function openModal(html){$("#modal").innerHTML=html;$("#scrim").hidden=false;var c=$("#modal [data-close]");if(c)c.focus();}
+function closeModal(){$("#scrim").hidden=true}
+$("#scrim").addEventListener("click",function(e){if(e.target.id==="scrim"||e.target.closest("[data-close]"))closeModal()});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("#scrim").hidden)closeModal()});
+function openLocked(){openModal('<div class="eyebrow">Plus tard dans l\'année</div><h3>Le Cabinet</h3><p>Ici, des patients fictifs arriveront avec leur profil (âge, poids, activité, pathologie, rappel des 24 h). Tu calculeras leurs besoins et tu construiras un bilan nutritionnel. Ce lieu s\'ouvrira avec tes cours pratiques.</p><div class="row"><button class="btn small" data-close>Fermer</button></div>')}
+function openCarnet(){
+  var items=S.carnet.length?S.carnet.map(function(c){return '<div class="carnet-item"><span class="q">'+esc(c.q)+'</span><span class="a">✓ '+esc(c.a)+'</span><span class="r">'+esc(c.ref)+' · revient en priorité dans le Défi</span></div>'}).join(""):'<div class="mock">Ton carnet est vide. Chaque notion ratée s\'ajoute ici, revient en priorité dans les Défis, et disparaît quand tu la réussis.</div>';
+  openModal('<div class="eyebrow">Répétition espacée</div><h3>Carnet de révision</h3><p>'+S.carnet.length+' notion'+(S.carnet.length>1?"s":"")+' à retravailler, avec la bonne réponse et la fiche d\'origine.</p><div style="display:flex;flex-direction:column;gap:8px">'+items+'</div><div class="row"><button class="btn small" data-close>Fermer</button>'+(S.carnet.length?'<button class="btn small ghost" id="clearC">Vider le carnet</button>':'')+'</div>');
+  var cc=$("#clearC");if(cc)cc.onclick=function(){S.carnet=[];save();refreshHUD();openCarnet();};
+}
+
+/* ---------- game shell ---------- */
+var G=null;
+$("#quitGame").onclick=function(){show("world")};
+function setProg(n,cur,res){var h="";for(var i=0;i<n;i++)h+='<i class="'+(res[i]===true?"ok":res[i]===false?"ko":(i===cur?"cur":""))+'"></i>';$("#gProg").innerHTML=h}
+function award(pts){G.score+=pts;S.xp+=pts;save();$("#gScore").textContent=G.score;refreshHUD();}
+function startGame(id){
+  var l=LEVELS[id];G={id:id,score:0,lvl:l};$("#gScore").textContent=0;show("game");$("#gTitle").textContent=l.t;
+  if(l.game==="build")Builder();else if(l.game==="voyage")Voyage();
+  else if(l.defi){var pool=[];worldLevels(l.defi).forEach(function(x){(x.items||[]).forEach(function(it){pool.push(it)})});
+    var keys=S.carnet.map(function(c){return c.key}),prio=shuffle(pool.filter(function(it){return keys.indexOf(it.key)>=0})),rest=shuffle(pool.filter(function(it){return keys.indexOf(it.key)<0}));
+    Runner(shuffle(prio.slice(0,Math.ceil(l.n*.6)).concat(rest).slice(0,l.n)),true);}
+  else Runner(l.items,false);
+}
+function finish(ratio,title,lines){
+  var stars=ratio>=.9?3:ratio>=.6?2:ratio>0?1:0;S.stars[G.id]=Math.max(S.stars[G.id]||0,stars);save();
+  var big="";for(var i=0;i<3;i++)big+='<span class="'+(i<stars?"on":"off")+'">★</span>';
+  $("#gStage").innerHTML='<div class="solo"><div class="qcard end pop"><div class="stars-big">'+big+'</div><h3 style="font-family:var(--display);font-size:28px">'+esc(title)+'</h3><p style="color:var(--muted);margin:0;max-width:52ch">'+lines+'</p><div class="row" style="justify-content:center"><button class="btn" id="again">Rejouer</button><button class="btn ghost" data-go="world">Retour à la carte</button><button class="btn ghost" data-carnet>Voir mon carnet</button></div></div></div>';
+  $("#again").onclick=function(){startGame(G.id)};
+}
+function feedback(ok,title,e,ref,nextLabel,onNext){
+  var f=$("#fb");f.innerHTML='<div class="fb '+(ok?"":"ko")+' pop"><strong>'+title+'</strong>'+(e?esc(e):"")+'<span class="ref">Source : '+esc(ref)+(ok?"":" · ajouté à ton carnet")+'</span></div><div class="row" style="margin-top:12px"><button class="btn small" id="nx">'+nextLabel+'</button></div>';
+  var nx=$("#nx");nx.focus({preventScroll:true});f.scrollIntoView({behavior:reduce?"auto":"smooth",block:"nearest"});nx.onclick=onNext;
+}
+
+/* ---------- RUNNER générique ---------- */
+function secTable(items,res){var order=[],m={};items.forEach(function(it,i){var k=it.sec||"";if(!m[k]){m[k]=[0,0];order.push(k);}m[k][1]++;if(res[i])m[k][0]++;});
+  return '</p><div class="sectab">'+order.map(function(k){var v=m[k],ok=v[0]===v[1];return '<div class="secrow"><span>'+esc(k)+'</span><b class="'+(ok?"g":"r")+'">'+v[0]+' / '+v[1]+'</b></div>'}).join("")+'</div><p style="display:none">';}
+var KIND={qcm:"QCM",calc:"Calcul",tri:"Tri",assoc:"Association",ordre:"Remise en ordre"};
+function Runner(items,isDefi){
+  var i=0,res=[],l=G.lvl;
+  function where(it){return isDefi?it.ref:(it.sec||l.s)}
+  function draw(){
+    setProg(items.length,i,res);var it=items[i];
+    var head='<div class="where">'+esc(where(it))+' · '+(i+1)+'/'+items.length+'</div><span class="kind">'+KIND[it.k]+'</span>';
+    var body="";
+    if(it.k==="qcm"){it._o=shuffle(it.o.map(function(t,k){return {t:t,ok:k===0}}));
+      body='<h3>'+esc(it.q)+'</h3><div class="opts">'+it._o.map(function(o,k){return '<button class="opt" data-k="'+k+'">'+esc(o.t)+'</button>'}).join("")+'</div>';}
+    if(it.k==="calc")body='<h3>'+esc(it.q)+'</h3><div class="calc" id="cf"><label for="cin" class="lbl" style="width:100%">Ta réponse</label><input id="cin" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="?"><span class="u">'+esc(it.u)+'</span><button class="btn small" type="button" id="cval">Valider</button></div>';
+    if(it.k==="tri")body='<h3>Dans quelle case ranges-tu…</h3><div class="big pop">'+esc(it.n)+'</div>'+(it.sub?'<div class="big-sub">'+esc(it.sub)+'</div>':'')+'<div class="bins" style="grid-template-columns:repeat('+it.b.length+',minmax(0,1fr))">'+it.b.map(function(b,k){return '<button class="bin" data-k="'+k+'"><b>'+esc(b[0])+'</b>'+(b[1]?'<small>'+esc(b[1])+'</small>':'')+'</button>'}).join("")+'</div>';
+    if(it.k==="assoc"){it._r=shuffle(it.p.map(function(x,k){return k}));
+      body='<h3>'+esc(it.q)+'</h3><p style="margin:0;color:var(--muted);font-size:14px">Touche un élément à gauche, puis sa réponse à droite.</p><div class="assoc"><div class="col">'+it.p.map(function(x,k){return '<button class="as L" data-k="'+k+'">'+esc(x[0])+'</button>'}).join("")+'</div><div class="col">'+it._r.map(function(k){return '<button class="as R" data-k="'+k+'">'+esc(it.p[k][1])+'</button>'}).join("")+'</div></div>';}
+    if(it.k==="ordre"){it._pool=shuffle(it.s.map(function(x,k){return k}));it._seq=[];
+      body='<h3>'+esc(it.q)+'</h3><div class="lbl">Ta séquence</div><div class="seq" id="seq"></div><div class="lbl">À placer (touche dans l\'ordre)</div><div class="pool" id="pool"></div><div class="row"><button class="btn small" id="chk" disabled>Vérifier l\'ordre</button></div>';}
+    $("#gStage").innerHTML='<div class="solo"><div class="qcard pop">'+head+body+'<div id="fb"></div></div></div>';
+    wire(it);
+  }
+  function done(ok,ansText,qText){
+    var it=items[i];res[i]=ok;setProg(items.length,i,res);
+    if(ok){award(10);clearMiss(it.key);}else addMiss(it.key,qText,ansText,it.ref);
+    feedback(ok,ok?"Exact ! +10 pts":"Pas tout à fait. La bonne réponse : "+esc(ansText),it.e,it.ref,i<items.length-1?"Suivant →":"Voir mon score",function(){
+      i++;if(i<items.length){draw();window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});}
+      else{var g=res.filter(Boolean).length;finish(g/items.length,g+" / "+items.length+" réussis",(g===items.length?"Sans faute ! Toutes les notions de ces sections sont maîtrisées.":"Les notions ratées sont dans ton carnet : elles reviendront dans le Défi de la carte.")+(isDefi?"":secTable(items,res)));}
+    });
+  }
+  function wire(it){
+    if(it.k==="qcm")$$(".opt").forEach(function(b){b.onclick=function(){var o=it._o[+b.dataset.k];$$(".opt").forEach(function(x,k){x.disabled=true;if(it._o[k].ok)x.classList.add("ok")});if(!o.ok)b.classList.add("ko");done(o.ok,it.o[0],it.q);}});
+    if(it.k==="calc"){var inp=$("#cin");inp.focus({preventScroll:true});function check(){var v=parseFloat(inp.value.replace(",",".").replace(/\s/g,""));if(isNaN(v)){inp.classList.add("ko");$("#fb").innerHTML='<p style="margin:0;color:var(--bad);font-size:14px">Écris un nombre (par exemple 4 ou 5,5), puis valide.</p>';inp.focus();return;}
+      var ok=Math.abs(v-it.a)<=it.tol+1e-9;inp.classList.remove("ko");inp.classList.add(ok?"ok":"ko");inp.disabled=true;$("#cval").disabled=true;done(ok,fr(it.a)+(it.u?" "+it.u:""),it.q);}
+      $("#cval").onclick=check;inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();check();}});}
+    if(it.k==="tri")$$(".bin").forEach(function(b){b.onclick=function(){var k=+b.dataset.k,ok=k===it.ans;$$(".bin").forEach(function(x){x.disabled=true});b.classList.add(ok?"ok":"ko");if(!ok)$('.bin[data-k="'+it.ans+'"]').classList.add("ok");done(ok,it.b[it.ans][0],"Classe : "+it.n+" ("+it.b.map(function(x){return x[0]}).join(" / ")+")");}});
+    if(it.k==="assoc"){var sL=null,sR=null,err=0,matched=0,num=0;
+      function tryPair(){if(sL===null||sR===null)return;var bl=$('.as.L[data-k="'+sL+'"]'),br=$('.as.R[data-k="'+sR+'"]');
+        if(sL===sR){num++;[bl,br].forEach(function(b){b.classList.remove("sel");b.classList.add("done");b.disabled=true;b.insertAdjacentHTML("afterbegin",'<span class="tagn">'+num+'</span>')});matched++;
+          if(matched===it.p.length)done(err===0,it.p.map(function(x){return x[0]+" → "+x[1]}).join(" · "),it.q);}
+        else{err++;[bl,br].forEach(function(b){b.classList.remove("sel");b.classList.add("shake");setTimeout(function(){b.classList.remove("shake")},400)});}
+        sL=sR=null;}
+      $$(".as.L").forEach(function(b){b.onclick=function(){$$(".as.L").forEach(function(x){x.classList.remove("sel")});b.classList.add("sel");sL=+b.dataset.k;tryPair()}});
+      $$(".as.R").forEach(function(b){b.onclick=function(){$$(".as.R").forEach(function(x){x.classList.remove("sel")});b.classList.add("sel");sR=+b.dataset.k;tryPair()}});
+      it._err=function(){return err};}
+    if(it.k==="ordre"){
+      function rend(){$("#seq").innerHTML=it.s.map(function(x,k){var v=it._seq[k];return v===undefined?'<div class="slot"><b>'+(k+1)+'</b>…</div>':'<button class="slot fill" data-pos="'+k+'"><b>'+(k+1)+'</b>'+esc(it.s[v])+'</button>'}).join("");
+        $("#pool").innerHTML=it._pool.filter(function(k){return it._seq.indexOf(k)<0}).map(function(k){return '<button class="chipb" data-k="'+k+'">'+esc(it.s[k])+'</button>'}).join("");
+        $$("#pool .chipb").forEach(function(b){b.onclick=function(){it._seq.push(+b.dataset.k);rend()}});
+        $$("#seq .slot.fill").forEach(function(b){b.onclick=function(){it._seq.splice(+b.dataset.pos,1);rend()}});
+        $("#chk").disabled=it._seq.length!==it.s.length;}
+      rend();
+      $("#chk").onclick=function(){var ok=true;$$("#seq .slot").forEach(function(sl,k){var good=it._seq[k]===k;if(!good)ok=false;sl.classList.add(good?"ok":"ko");sl.disabled=true;sl.onclick=null;});$("#chk").disabled=true;$("#pool").innerHTML="";
+        done(ok,it.s.join(" → "),it.q);};
+    }
+  }
+  draw();
+}
+
+/* ---------- JEU : assemble le diholoside ---------- */
+var DIH=[
+ {n:"Saccharose",o:["Glucose","Fructose"],l:"α1→β2",r:false,e:"α-D-glucopyranosyl(1→2)β-D-fructofuranoside. Les deux carbones anomériques sont engagés : non réducteur (Fehling négatif). Hydrolysé par la saccharase (= invertase)."},
+ {n:"Lactose",o:["Galactose","Glucose"],l:"β1→4",r:true,e:"β-D-galactopyranosyl(1→4)D-glucopyranose. Le glucose garde son carbone anomérique libre : réducteur. Hydrolysé par la lactase."},
+ {n:"Maltose",o:["Glucose","Glucose"],l:"α1→4",r:true,e:"Deux glucoses en α1→4, réducteur. Issu de la digestion des parties linéaires de l'amidon, coupé par la maltase."},
+ {n:"Isomaltose",o:["Glucose","Glucose"],l:"α1→6",r:true,e:"Deux glucoses en α1→6 : il vient des ramifications de l'amidon (les amylases ne coupent que les α1→4). Coupé par l'isomaltase."},
+ {n:"Cellobiose",o:["Glucose","Glucose"],l:"β1→4",r:true,e:"Mêmes oses et mêmes carbones que le maltose, mais en β : aucune enzyme humaine ne le coupe. C'est le motif de la cellulose."}
+];
+var OSES=["Glucose","Fructose","Galactose"],LIAIS=["α1→4","α1→6","β1→4","α1→β2"],OCOL={Glucose:"var(--amber)",Fructose:"var(--coral)",Galactose:"var(--sky)"};
+function ring6(x,y){var a=[];for(var i=0;i<6;i++){var t=-Math.PI/2+i*Math.PI/3+Math.PI/6;a.push((x+48*Math.cos(t)).toFixed(1)+","+(y+48*Math.sin(t)).toFixed(1))}return a.join(" ")}
+function ring5(x,y){var a=[];for(var i=0;i<5;i++){var t=-Math.PI/2+i*2*Math.PI/5;a.push((x+46*Math.cos(t)).toFixed(1)+","+(y+46*Math.sin(t)).toFixed(1))}return a.join(" ")}
+function ring(x,y,ose,label){
+  if(!ose)return '<g><polygon points="'+ring6(x,y)+'" fill="none" stroke="var(--line)" stroke-width="3" stroke-dasharray="6 6"/><text x="'+x+'" y="'+(y+5)+'" text-anchor="middle" fill="var(--dim)" font-size="14">'+label+'</text></g>';
+  var c=OCOL[ose],fu=ose==="Fructose",pts=fu?ring5(x,y):ring6(x,y),ov=pts.split(" ")[1].split(",");
+  return '<g class="pop"><polygon points="'+pts+'" fill="'+c+'" fill-opacity=".12" stroke="'+c+'" stroke-width="3.5"/><circle cx="'+ov[0]+'" cy="'+ov[1]+'" r="6" fill="var(--violet)"/><text x="'+ov[0]+'" y="'+(+ov[1]-11)+'" text-anchor="middle" fill="var(--violet)" font-size="11" font-family="JetBrains Mono">O</text><text x="'+x+'" y="'+(y+5)+'" text-anchor="middle" fill="var(--fg)" font-size="14" font-weight="700">'+ose+'</text><text x="'+x+'" y="'+(y+72)+'" text-anchor="middle" fill="var(--muted)" font-size="11.5">'+(fu?"furanose · 5 côtés":"pyranose · 6 côtés")+'</text></g>';
+}
+function Builder(){
+  var deck=shuffle(DIH),i=0,res=[],pts=0,pick,ref="Fiche 2 · Les oligosides";
+  function draw(){pick={o:[],l:null,r:null};setProg(deck.length,i,res);var d=deck[i];
+    $("#gStage").innerHTML='<div class="stage"><div class="visual"><svg id="bsvg" viewBox="0 0 360 230" role="img" aria-label="Ta molécule en construction"></svg><p style="text-align:center;margin:4px 0 0;color:var(--muted);font-size:13px">Ta molécule : <b style="color:var(--fg)">'+esc(d.n)+'</b> · <span class="mono">C₁₂H₂₂O₁₁</span></p></div>'+
+     '<div class="qcard"><div class="where">Le Labo des oses · '+ref+' · '+(i+1)+'/'+deck.length+'</div><span class="kind">Assemblage</span><h3>Construis le <span style="color:var(--amber)">'+esc(d.n)+'</span>.</h3>'+
+     '<div class="lbl">1 · Choisis deux oses</div><div class="tiles" id="tO">'+OSES.map(function(o){return '<button class="tile" data-o="'+o+'">+ '+o+'</button>'}).join("")+'<button class="tile" id="clrO" style="background:none;border-color:var(--line)">Effacer</button></div>'+
+     '<div class="lbl">2 · Quelle liaison osidique ?</div><div class="tiles" id="tL">'+LIAIS.map(function(l){return '<button class="tile mono" data-l="'+l+'">'+l+'</button>'}).join("")+'</div>'+
+     '<div class="lbl">3 · Réducteur (Fehling positif) ?</div><div class="tiles" id="tR"><button class="tile" data-r="1">Oui</button><button class="tile" data-r="0">Non</button></div>'+
+     '<div class="row"><button class="btn" id="val" disabled>Valider la molécule</button></div><div id="fb"></div></div></div>';
+    $$("#tO [data-o]").forEach(function(b){b.onclick=function(){if(pick.o.length<2){pick.o.push(b.dataset.o);upd();}}});
+    $("#clrO").onclick=function(){pick.o=[];upd()};
+    $$("#tL [data-l]").forEach(function(b){b.onclick=function(){pick.l=b.dataset.l;upd()}});
+    $$("#tR [data-r]").forEach(function(b){b.onclick=function(){pick.r=b.dataset.r==="1";upd()}});
+    $("#val").onclick=check;upd();}
+  function upd(){
+    $$("#tL [data-l]").forEach(function(b){b.classList.toggle("sel",b.dataset.l===pick.l)});
+    $$("#tR [data-r]").forEach(function(b){b.classList.toggle("sel",pick.r!==null&&(b.dataset.r==="1")===pick.r)});
+    $("#bsvg").innerHTML='<line x1="145" y1="100" x2="215" y2="100" stroke="'+(pick.l?"var(--violet)":"var(--line)")+'" stroke-width="4" '+(pick.l?"":'stroke-dasharray="4 6"')+'/><circle cx="180" cy="100" r="7" fill="'+(pick.l?"var(--violet)":"var(--ink-3)")+'"/><text x="180" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="var(--violet)">'+(pick.l||"?")+'</text>'+ring(95,100,pick.o[0],"ose 1")+ring(265,100,pick.o[1],"ose 2")+
+      (pick.r!==null?'<text x="180" y="218" text-anchor="middle" font-size="12.5" fill="var(--muted)">'+(pick.r?"carbone anomérique libre → réducteur":"carbones anomériques engagés → non réducteur")+'</text>':'');
+    $("#val").disabled=!(pick.o.length===2&&pick.l&&pick.r!==null);}
+  function check(){
+    var d=deck[i],ok1=pick.o.slice().sort().join()===d.o.slice().sort().join(),ok2=pick.l===d.l,ok3=pick.r===d.r,n=ok1+ok2+ok3;
+    $$(".tile").forEach(function(b){b.disabled=true});$("#val").disabled=true;
+    $$("#tL [data-l]").forEach(function(b){if(b.dataset.l===d.l)b.classList.add("ok");else if(b.dataset.l===pick.l)b.classList.add("ko")});
+    $$("#tR [data-r]").forEach(function(b){var v=b.dataset.r==="1";if(v===d.r)b.classList.add("ok");else if(v===pick.r)b.classList.add("ko")});
+    award(n*5);pts+=n;res[i]=n===3;setProg(deck.length,i,res);
+    var key="build#"+d.n;if(n===3)clearMiss(key);else addMiss(key,"Structure du "+d.n,d.o.join(" + ")+" · "+d.l+" · "+(d.r?"réducteur":"non réducteur"),ref);
+    var marks=[["Oses",ok1,d.o.join(" + ")],["Liaison",ok2,d.l],["Réducteur",ok3,d.r?"oui":"non"]].map(function(x){return (x[1]?"✓ ":"✗ ")+x[0]+" : "+x[2]}).join(" · ");
+    feedback(n===3,n===3?"Molécule parfaite ! +15 pts":n+" / 3 bonnes réponses · +"+(n*5)+" pts",marks+". "+d.e,ref,i<deck.length-1?"Molécule suivante →":"Voir mon score",function(){
+      i++;if(i<deck.length)draw();else finish(pts/(deck.length*3),pts+" / "+(deck.length*3)+" points de structure","Le piège classique : maltose et cellobiose ont les mêmes oses et les mêmes carbones. Seule la liaison change (α ou β), et nos enzymes ne coupent que l'α.");});
+  }
+  draw();
+}
+
+/* ---------- JEU : le voyage de l'amidon ---------- */
+var VOY=[
+ {st:"Bouche",env:"salive · pH 7",q:"Quelle enzyme commence la digestion de l'amidon ?",o:["α-amylase salivaire","Lactase","Maltase"],a:0,e:"L'α-amylase salivaire réalise une hydrolyse partielle : l'amidon devient des dextrines + du maltose."},
+ {st:"Estomac",env:"pH 3",q:"Que se passe-t-il pour les glucides dans l'estomac ?",o:["Rien : l'amylase salivaire est dénaturée par l'acidité","L'amidon y est absorbé","La pepsine termine la digestion de l'amidon"],a:0,e:"À pH 3, l'amylase salivaire est dénaturée. Rien de significatif ne se passe pour les glucides."},
+ {st:"Duodénum",env:"pH 6-7",q:"L'α-amylase pancréatique transforme les dextrines en…",o:["glucose directement absorbable","maltose + isomaltose","saccharose"],a:1,e:"Elle arrive par le canal de Wirsung et ne coupe que les liaisons α1→4 : il reste du maltose et de l'isomaltose, encore trop gros pour être absorbés."},
+ {st:"Bordure en brosse",env:"jéjunum · microvillosités",q:"Quelle enzyme libère enfin le glucose à partir du maltose ?",o:["L'amylase pancréatique","La maltase","La saccharase"],a:1,e:"Les 4 glucidases fixées sur les microvillosités (maltase, isomaltase, saccharase, lactase) libèrent les oses, seule forme absorbable."},
+ {st:"Pôle apical",env:"entrée dans l'entérocyte",q:"Comment le glucose entre-t-il dans l'entérocyte ?",o:["Par diffusion entre les phospholipides","Par GLUT4, grâce à l'insuline","Par SGLT1, en symport avec le Na⁺"],a:2,e:"Le glucose est trop gros et non liposoluble. SGLT1 le fait entrer avec le Na⁺, qui descend son gradient : c'est un transport actif secondaire."},
+ {st:"Pôle basal",env:"sortie vers le sang",q:"Par où le glucose sort-il de l'entérocyte ?",o:["GLUT2, transport facilité","SGLT1","La pompe Na⁺/K⁺-ATPase"],a:0,e:"GLUT2 est un uniport qui suit le gradient, sans énergie. La pompe Na⁺/K⁺ (3 Na⁺ sortent, 2 K⁺ entrent) sert à ressortir le sodium."},
+ {st:"Veine porte",env:"distribution",q:"Quel organe reçoit le glucose en premier ?",o:["Le cerveau","Le foie, qui en retient 30 à 40 %","Les muscles"],a:1,e:"Par la veine porte, le glucose arrive au foie (GLUT2), qui en récupère 30 à 40 % et limite l'hyperglycémie."}
+];
+var VSTOPS=[[180,40],[240,140],[120,225],[240,305],[120,380],[240,445],[180,505]];
+var VPATH="M180,40 C180,90 245,95 240,140 S120,180 120,225 S240,260 240,305 S120,340 120,380 S240,405 240,445 S180,480 180,505";
+function Voyage(){
+  var i=0,res=[],lens=[],cur=0,L=0,path,dot,ref="Digestion, absorption, distribution du glucose";
+  $("#gStage").innerHTML='<div class="stage"><div class="visual"><svg id="vsvg" viewBox="0 0 360 540" role="img" aria-label="Parcours de l\'amidon dans le tube digestif"></svg></div><div class="qcard" id="vq"></div></div>';
+  var s='<defs><radialGradient id="glow"><stop offset="0" stop-color="#ffd58f"/><stop offset=".5" stop-color="#ffb547" stop-opacity=".6"/><stop offset="1" stop-color="#ffb547" stop-opacity="0"/></radialGradient></defs>'+
+   '<ellipse cx="250" cy="140" rx="58" ry="40" fill="#ff8a70" opacity=".10"/><path d="M262,292 q6,-18 12,0 q6,-18 12,0 q6,-18 12,0" fill="none" stroke="#ff8a70" stroke-width="2" opacity=".5"/>'+
+   '<rect x="60" y="356" width="240" height="114" rx="16" fill="#72c6ff" opacity=".07"/><text x="294" y="372" font-size="10" fill="#8f85b3" text-anchor="end">entérocyte</text>'+
+   '<path id="vp" d="'+VPATH+'" fill="none" stroke="#ff8a70" stroke-opacity=".28" stroke-width="22" stroke-linecap="round"/><path id="vdone" d="'+VPATH+'" fill="none" stroke="#ffb547" stroke-width="3" stroke-linecap="round"/>';
+  VSTOPS.forEach(function(p,k){var right=p[0]>=180,lx=right?p[0]+22:p[0]-22;
+    s+='<g id="vs'+k+'"><circle cx="'+p[0]+'" cy="'+p[1]+'" r="9" fill="#221a3d" stroke="#5a4d8f" stroke-width="2.5"/><text x="'+lx+'" y="'+(p[1]-2)+'" text-anchor="'+(right?"start":"end")+'" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="13" fill="#f4effd">'+VOY[k].st+'</text><text x="'+lx+'" y="'+(p[1]+13)+'" text-anchor="'+(right?"start":"end")+'" font-size="10.5" fill="#b4a9d2">'+VOY[k].env+'</text></g>';});
+  s+='<g id="vdot"><circle r="22" fill="url(#glow)"/><polygon points="0,-9 8,-4.5 8,4.5 0,9 -8,4.5 -8,-4.5" fill="#ffd58f" stroke="#2a1a00" stroke-width="1.5"/></g>';
+  $("#vsvg").innerHTML=s;path=$("#vp");dot=$("#vdot");L=path.getTotalLength();
+  VSTOPS.forEach(function(p){var best=0,bd=1e9;for(var t=0;t<=L;t+=2){var q=path.getPointAtLength(t),dd=(q.x-p[0])*(q.x-p[0])+(q.y-p[1])*(q.y-p[1]);if(dd<bd){bd=dd;best=t}}lens.push(best)});
+  var done=$("#vdone");done.setAttribute("stroke-dasharray",L+" "+L);
+  function place(t){var q=path.getPointAtLength(t);dot.setAttribute("transform","translate("+q.x+","+q.y+")");done.setAttribute("stroke-dashoffset",L-t);}
+  function moveTo(t,cb){if(reduce){cur=t;place(t);cb&&cb();return;}var a=cur,st=performance.now(),dur=900;(function f(now){var k=Math.min(1,(now-st)/dur),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;place(a+(t-a)*e);if(k<1)requestAnimationFrame(f);else{cur=t;cb&&cb()}})(st);}
+  function mark(k,ok){var c=$("#vs"+k+" circle");c.setAttribute("stroke",ok?"#5fe0b4":"#ff6b8a");c.setAttribute("fill",ok?"#1f3b3a":"#3b1f33");}
+  function ask(){setProg(VOY.length,i,res);var v=VOY[i];
+    $("#vq").innerHTML='<div class="where">Étape '+(i+1)+' / '+VOY.length+' · '+esc(v.st)+' · '+esc(v.env)+'</div><span class="kind">Parcours</span><h3>'+esc(v.q)+'</h3><div class="opts">'+v.o.map(function(o,k){return '<button class="opt" data-k="'+k+'">'+esc(o)+'</button>'}).join("")+'</div><div id="fb"></div>';
+    $$("#vq .opt").forEach(function(b){b.onclick=function(){answer(+b.dataset.k,b)}});}
+  function answer(k,btn){var v=VOY[i],ok=k===v.a;$$("#vq .opt").forEach(function(b){b.disabled=true});
+    btn.classList.add(ok?"ok":"ko");if(!ok)$$("#vq .opt")[v.a].classList.add("ok");
+    res[i]=ok;mark(i,ok);setProg(VOY.length,i,res);
+    var key="voyage#"+i;if(ok){award(10);clearMiss(key);}else addMiss(key,v.st+" : "+v.q,v.o[v.a],ref);
+    feedback(ok,ok?"Exact ! +10 pts":"Raté, la bonne réponse est en vert.",v.e,ref,i<VOY.length-1?"Avancer vers « "+VOY[i+1].st+" » →":"Arriver au foie",function(){
+      i++;if(i<VOY.length){moveTo(lens[i],ask);$("#vq").innerHTML='<div class="where">En route…</div><h3 style="color:var(--muted)">Le bol alimentaire avance vers '+esc(VOY[i].st.toLowerCase())+'.</h3>';}
+      else{var g=res.filter(Boolean).length;finish(g/VOY.length,"Glucose livré au foie !",g+" étapes sur "+VOY.length+" franchies sans erreur. Résumé : amylases (hydrolyse partielle) → glucidases de la bordure en brosse → SGLT1 + GLUT2 → veine porte → foie.");}});}
+  place(lens[0]);cur=lens[0];ask();
+}
+
+refreshHUD();startFx();
+})();
+</script>
+
+</body>
+</html>
